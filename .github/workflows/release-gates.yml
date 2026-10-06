@@ -1,0 +1,131 @@
+name: NADI Release Gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: Production release version (for example 1.0.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: nadi_test
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    env:
+      APP_NAME: NADI
+      APP_ENV: testing
+      APP_DEBUG: false
+      APP_URL: http://127.0.0.1:8000
+      APP_TIMEZONE: Asia/Jakarta
+      APP_LOCALE: id
+      APP_FALLBACK_LOCALE: id
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: nadi_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      VITE_DEMO_MODE: false
+      NADI_ALLOW_DEMO_SEED: false
+      NADI_REQUIRE_TEST_DB: mysql
+      SOURCE_DATE_EPOCH: 1790812800
+      NADI_GATE_PACKAGE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.release_version || 'ci-gate' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate production release version
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          if [[ ! "$NADI_GATE_PACKAGE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release_version: $NADI_GATE_PACKAGE_VERSION" >&2
+            exit 2
+          fi
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, dom, xml, xmlwriter, pdo_mysql
+          coverage: none
+          tools: composer:v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.12.0'
+          cache: npm
+
+      - name: Generate ephemeral CI release-gate credentials
+        shell: bash
+        run: |
+          bash scripts/generate-release-gate-env.sh \
+            --format github-env \
+            --database "$DB_DATABASE" \
+            --run-id "${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}" \
+            >> "$GITHUB_ENV"
+
+      - name: Install browser acceptance tooling
+        run: |
+          python3 -m pip install --disable-pip-version-check -r requirements-e2e.txt
+          python3 -m playwright install chromium --with-deps
+
+      - name: Run authoritative final gate orchestrator
+        id: final_gate
+        run: bash scripts/final-gate.sh
+
+      - name: Build source-bound CI evidence bundle
+        if: always()
+        run: |
+          python3 scripts/ci_evidence.py bundle \
+            --gate-dir artifacts/release-gate \
+            --browser-dir artifacts/browser-acceptance \
+            --bundle-dir artifacts/ci-evidence
+          python3 scripts/ci_evidence.py verify \
+            --bundle-dir artifacts/ci-evidence
+
+      - name: Upload unified CI release evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nadi-ci-release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/ci-evidence
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload raw gate evidence for failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nadi-release-gate-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/release-gate
+            artifacts/browser-acceptance
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,21 @@
+{
+  "schema": "nadi.release-archive-policy.v1",
+  "version": 1,
+  "archive_status": "ARCHIVE_READY",
+  "closeout_status": "OPERATIONAL_CLOSEOUT_READY",
+  "retention_rule": "operator_supplied_organization_policy",
+  "requirements": {
+    "verified_release_closure_required": true,
+    "verified_operator_handoff_required": true,
+    "same_source_checkpoint_required": true,
+    "same_repository_required": true,
+    "same_release_version_required": true,
+    "closed_world_archive_required": true,
+    "sha256_manifest_required": true,
+    "secret_leak_guard_required": true,
+    "recovery_rehearsal_required_before_closeout": true,
+    "archive_overwrite_forbidden": true,
+    "synthetic_evidence_not_authoritative": true
+  },
+  "retention_note": "This repository does not assert an official LSP Migas retention duration. The operator must supply retention_until_utc according to approved organizational policy."
+}

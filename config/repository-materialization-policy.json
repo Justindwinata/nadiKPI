@@ -1,0 +1,19 @@
+{
+  "schema": "nadi.repository-materialization-policy.v1",
+  "version": 1,
+  "materialization_iteration": "15.18",
+  "provider": "github",
+  "git_object_format": "sha1",
+  "required_branch": "main",
+  "required_ref": "refs/heads/main",
+  "require_single_root_commit": true,
+  "commit_author_name": "NADI Release Engineering",
+  "commit_author_email": "nadi-release@invalid.local",
+  "commit_message": "NADI frozen source Iteration 15.18",
+  "remote_head_confirmation_required": true,
+  "remote_head_metadata_source": "github_rest_git_ref",
+  "source_checkpoint_required": true,
+  "git_bundle_required": true,
+  "submodules_forbidden": true,
+  "symlinks_forbidden": true
+}

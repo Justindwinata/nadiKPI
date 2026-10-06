@@ -1,0 +1,103 @@
+{
+  "schema": "nadi.release-closure-verification-matrix.v1",
+  "version": 1,
+  "release_authority": "github_actions_workflow_dispatch_main_semver",
+  "gates": [
+    {
+      "id": "G01_SOURCE_CHECKPOINT",
+      "phase": "source",
+      "title": "Source checkpoint integrity",
+      "authority": "repository",
+      "required_evidence": ["AUDITED_SOURCE_RC_MANIFEST.sha256"],
+      "required_schema": null,
+      "required_state": "PASS",
+      "operator_action": "Verify every entry in AUDITED_SOURCE_RC_MANIFEST.sha256 before consuming external evidence.",
+      "synthetic_authoritative": false,
+      "blocks_downstream": true
+    },
+    {
+      "id": "G02_EXTERNAL_CI_FINAL",
+      "phase": "ci",
+      "title": "Authoritative external CI FINAL decision",
+      "authority": "github_actions",
+      "required_evidence": ["FINAL_RELEASE_DECISION.json"],
+      "required_schema": "nadi.final-release-decision.v1",
+      "required_state": "FINAL_PASS",
+      "operator_action": "Accept only workflow_dispatch on refs/heads/main with explicit semantic release version and expected repository identity.",
+      "synthetic_authoritative": false,
+      "blocks_downstream": true
+    },
+    {
+      "id": "G03_EXTERNAL_CI_CONSUMPTION",
+      "phase": "ci",
+      "title": "External CI artifact consumption",
+      "authority": "trusted_release_host",
+      "required_evidence": ["EXTERNAL_CI_CONSUMPTION.json"],
+      "required_schema": "nadi.external-ci-consumption.v1",
+      "required_state": "FINAL_PASS",
+      "operator_action": "Verify source fingerprint, CI provenance, package hash and append-only consumption receipt.",
+      "synthetic_authoritative": false,
+      "blocks_downstream": true
+    },
+    {
+      "id": "G04_DEPLOYMENT_INTAKE",
+      "phase": "deployment",
+      "title": "Production deployment intake authorization",
+      "authority": "trusted_release_host",
+      "required_evidence": ["DEPLOYMENT_INTAKE.json"],
+      "required_schema": "nadi.production-deployment-intake.v1",
+      "required_state": "AUTHORIZED_FOR_DEPLOYMENT",
+      "operator_action": "Deploy only from the closed-world deployment envelope that passed source/repository/package custody verification.",
+      "synthetic_authoritative": false,
+      "blocks_downstream": true
+    },
+    {
+      "id": "G05_POST_DEPLOY_VERIFICATION",
+      "phase": "production",
+      "title": "Production post-deploy verification",
+      "authority": "production_host",
+      "required_evidence": ["POST_DEPLOY_EVIDENCE_MANIFEST.json", "POST_DEPLOY_VERIFICATION.json"],
+      "required_schema": "nadi.post-deploy-verification.v1",
+      "required_state": "PASS",
+      "operator_action": "Require real production liveness/readiness/SPA 200, security headers, scheduler evidence and release-check evidence.",
+      "synthetic_authoritative": false,
+      "blocks_downstream": true
+    },
+    {
+      "id": "G06_OPERATIONAL_ACCEPTANCE",
+      "phase": "production",
+      "title": "Production operational acceptance",
+      "authority": "trusted_release_host",
+      "required_evidence": ["PRODUCTION_OPERATIONAL_ACCEPTANCE.json"],
+      "required_schema": "nadi.production-operational-acceptance.v1",
+      "required_state": "ACCEPTED",
+      "operator_action": "Re-verify deployment and post-deploy evidence before accepting production operation.",
+      "synthetic_authoritative": false,
+      "blocks_downstream": true
+    },
+    {
+      "id": "G07_RELEASE_CLOSURE_HANDOFF",
+      "phase": "closure",
+      "title": "Self-contained release closure handoff",
+      "authority": "trusted_release_host",
+      "required_evidence": ["RELEASE_CLOSURE.json", "RELEASE_CLOSURE_MANIFEST.json", "RELEASE_CLOSURE_MANIFEST.json.sha256"],
+      "required_schema": "nadi.release-closure-handoff.v1",
+      "required_state": "HANDOFF_READY",
+      "operator_action": "Export only from authorized deployment and accepted production evidence; do not manually assemble the bundle.",
+      "synthetic_authoritative": false,
+      "blocks_downstream": true
+    },
+    {
+      "id": "G08_INDEPENDENT_CLOSURE_VERIFY",
+      "phase": "closure",
+      "title": "Independent closure re-verification",
+      "authority": "independent_operator",
+      "required_evidence": ["verified closure artifact"],
+      "required_schema": null,
+      "required_state": "PASS",
+      "operator_action": "Run release_closure_handoff.py verify against the exact source checkpoint and expected repository before archival/handoff.",
+      "synthetic_authoritative": false,
+      "blocks_downstream": true
+    }
+  ]
+}

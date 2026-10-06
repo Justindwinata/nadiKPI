@@ -1,0 +1,48 @@
+{
+  "schema": "nadi.runtime-triage.v1",
+  "iteration": "15.5",
+  "date": "2026-10-05",
+  "authoritative_gate": "scripts/final-gate.sh",
+  "authoritative_gate_observed_result": {
+    "status": "fail",
+    "failed_phase": "00-execution-readiness-doctor",
+    "truthful_final_pass": false
+  },
+  "available_runtime": {
+    "php": "8.4.23",
+    "node": "22.16.0",
+    "npm": "10.9.2",
+    "python_playwright_import": "pass",
+    "system_chromium": "/usr/bin/chromium",
+    "system_chromium_headless_launch": "pass"
+  },
+  "blockers": {
+    "composer_cli": "missing",
+    "php_mbstring": "missing",
+    "php_dom": "missing",
+    "php_xml": "missing",
+    "php_xmlwriter": "missing",
+    "php_pdo_mysql": "missing",
+    "mysql8_runtime": "unavailable",
+    "docker": "unavailable",
+    "package_registry_connectivity": "unavailable",
+    "browser_loopback_navigation": "blocked_by_runner_policy_ERR_BLOCKED_BY_ADMINISTRATOR"
+  },
+  "npm_lock_cache": {
+    "resolved_registry_tarballs": 178,
+    "cache_matched": 18,
+    "cache_missing": 160,
+    "offline_clean_install": "blocked_ENOTCACHED"
+  },
+  "php_extension_build_fallback": {
+    "phpize": "missing",
+    "php_config": "missing",
+    "status": "not_viable_in_runner_without_external_packages"
+  },
+  "source_remediation": {
+    "managed_chromium_env": "NADI_BROWSER_EXECUTABLE_PATH",
+    "doctor_support": "added",
+    "browser_acceptance_support": "added",
+    "acceptance_requirement_weakened": false
+  }
+}

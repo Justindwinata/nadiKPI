@@ -1,0 +1,66 @@
+{
+  "schema": "nadi.release-environment.v1",
+  "composer": {
+    "required_major": 2
+  },
+  "mysql": {
+    "required_major": 8,
+    "ci_image": "mysql:8.4"
+  },
+  "npm": {
+    "minimum_major": 10
+  },
+  "php": {
+    "minimum": "8.4.1",
+    "required_extensions": [
+      "ctype",
+      "fileinfo",
+      "filter",
+      "hash",
+      "json",
+      "libxml",
+      "mbstring",
+      "openssl",
+      "PDO",
+      "session",
+      "tokenizer",
+      "dom",
+      "xml",
+      "xmlwriter",
+      "pdo_mysql"
+    ]
+  },
+  "python": {
+    "minimum": "3.10"
+  },
+  "required_commands": [
+    "bash",
+    "php",
+    "composer",
+    "node",
+    "npm",
+    "python3",
+    "curl",
+    "unzip",
+    "cmp"
+  ],
+  "required_environment": [
+    "APP_KEY",
+    "DB_DATABASE",
+    "NADI_VERIFY_DESTRUCTIVE_DATABASE",
+    "NADI_ACCEPTANCE_EMAIL",
+    "NADI_ACCEPTANCE_PASSWORD",
+    "NADI_BROWSER_FORCED_EMAIL",
+    "NADI_BROWSER_FORCED_PASSWORD",
+    "NADI_BROWSER_FORCED_NEW_PASSWORD",
+    "NADI_BROWSER_VIEWER_EMAIL",
+    "NADI_BROWSER_VIEWER_PASSWORD",
+    "NADI_BROWSER_VIEWER_NEW_PASSWORD"
+  ],
+  "sources": {
+    "node_engine": "package.json#engines.node",
+    "npm_engine": "package.json#engines.npm",
+    "php_requirement": "composer.json#require.php",
+    "playwright_requirement": "requirements-e2e.txt"
+  }
+}
