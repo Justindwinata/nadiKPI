@@ -135,7 +135,7 @@ def generate_report_and_verify_exports(page, context) -> dict[str, object]:
         lambda response: response.request.method == "POST" and response.url.rstrip("/").endswith("/api/reports"),
         timeout=15_000,
     ) as response_info:
-        create_button.evaluate("(button) => button.click()")
+        create_button.click(force=True)
     response = response_info.value
     if response.status != 201:
         raise AssertionError(f"Report snapshot creation returned HTTP {response.status}")
