@@ -299,8 +299,10 @@ def main() -> int:
             wait_for_operational_page(page)
             assert_no_global_overflow(page, route)
             heading = page.locator("#main-content h1, #main-content h2").first
-            if heading.count() == 0:
-                raise AssertionError(f"No visible page heading found on {route}")
+            try:
+                heading.wait_for(state="visible", timeout=15_000)
+            except PlaywrightTimeoutError as exc:
+                raise AssertionError(f"No visible page heading found on {route}") from exc
             evidence["routes"].append({"route": route, "heading": heading.inner_text().strip()})
 
         page.goto(f"{BASE_URL}/dashboard", wait_until="domcontentloaded")
