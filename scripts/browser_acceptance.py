@@ -118,6 +118,7 @@ def generate_report_and_verify_exports(page, context) -> dict[str, object]:
     create_button.wait_for(state="visible", timeout=15_000)
     report_select = page.get_by_label("Tipe laporan")
     report_select.wait_for(state="visible", timeout=15_000)
+    report_select.select_option(index=1)
     report_select.select_option(index=0)
     page.wait_for_function(
         "() => { const select = document.querySelector('.report-controls select'); return Boolean(select && select.value); }",
