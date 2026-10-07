@@ -131,12 +131,14 @@ def generate_report_and_verify_exports(page, context) -> dict[str, object]:
     )
     print("Browser report action: executive", file=sys.stderr)
     create_button.scroll_into_view_if_needed()
-    with page.expect_response(
-        lambda response: response.request.method == "POST" and response.url.rstrip("/").endswith("/api/reports"),
+    with page.expect_request(
+        lambda request: request.method == "POST" and request.url.rstrip("/").endswith("/api/reports"),
         timeout=15_000,
-    ) as response_info:
+    ) as request_info:
         create_button.click(force=True)
-    response = response_info.value
+    response = request_info.value.response()
+    if response is None:
+        raise AssertionError("Report snapshot request did not produce a response")
     if response.status != 201:
         raise AssertionError(f"Report snapshot creation returned HTTP {response.status}")
     payload = response.json()
