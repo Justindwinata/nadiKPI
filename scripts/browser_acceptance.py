@@ -494,7 +494,7 @@ def main() -> int:
         mobile_page.wait_for_url("**/dashboard", timeout=15_000)
         wait_for_operational_page(mobile_page)
         assert_no_global_overflow(mobile_page, "mobile dashboard")
-        mobile_page.get_by_role("button", name="Buka navigasi").click(force=True)
+        mobile_page.locator("header.topbar button").first.click(force=True)
         if "open" not in (mobile_page.locator("aside.sidebar").get_attribute("class") or ""):
             raise AssertionError("Mobile sidebar did not open")
         mobile_page.screenshot(path=str(ARTIFACT_DIR / "dashboard-mobile.png"), full_page=True)
