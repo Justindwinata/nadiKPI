@@ -190,7 +190,7 @@ def create_viewer_through_ui(page) -> None:
         and response.url.rstrip("/").endswith("/api/admin/users"),
         timeout=15_000,
     ) as create_response_info:
-        dialog.locator("form").evaluate("(form) => form.requestSubmit()")
+        dialog.get_by_role("button", name="Buat pengguna").click(force=True)
     create_response = create_response_info.value
     if create_response.status != 201:
         raise AssertionError(f"Viewer creation returned HTTP {create_response.status}: {create_response.text()[:240]}")
