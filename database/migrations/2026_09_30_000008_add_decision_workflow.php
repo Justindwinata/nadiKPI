@@ -83,7 +83,7 @@ return new class extends Migration
             $table->text('decision')->nullable();
             $table->string('status', 30)->default('open');
             $table->timestamps();
-            $table->unique(['management_review_id', 'risk_signal_id']);
+            $table->unique(['management_review_id', 'risk_signal_id'], 'mri_review_risk_unique');
             $table->index(['management_review_id', 'status']);
         });
     }
