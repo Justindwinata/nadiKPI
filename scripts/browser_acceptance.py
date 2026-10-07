@@ -116,6 +116,9 @@ def generate_report_and_verify_exports(page, context) -> dict[str, object]:
     wait_for_operational_page(page)
     create_button = page.get_by_role("button", name="Buat snapshot")
     create_button.wait_for(state="visible", timeout=15_000)
+    report_select = page.get_by_label("Tipe laporan")
+    report_select.wait_for(state="visible", timeout=15_000)
+    report_select.select_option(index=0)
     page.wait_for_function(
         "() => [...document.querySelectorAll('button')].some(button => button.textContent.includes('Buat snapshot') && !button.disabled)",
         timeout=15_000,
