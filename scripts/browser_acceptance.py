@@ -129,6 +129,7 @@ def generate_report_and_verify_exports(page, context) -> dict[str, object]:
         "() => [...document.querySelectorAll('button')].some(button => button.textContent.includes('Buat snapshot') && !button.disabled)",
         timeout=15_000,
     )
+    print("Browser report action: executive", file=sys.stderr)
     create_button.scroll_into_view_if_needed()
     with page.expect_response(
         lambda response: response.request.method == "POST" and response.url.rstrip("/").endswith("/api/reports"),
@@ -234,6 +235,7 @@ def verify_viewer_boundary(browser, extra_headers, report_id: int) -> dict[str, 
         "() => [...document.querySelectorAll('button')].some(button => button.textContent.includes('Buat snapshot') && !button.disabled)",
         timeout=15_000,
     )
+    print("Browser report action: viewer", file=sys.stderr)
     with viewer_page.expect_response(
         lambda response: response.request.method == "POST" and response.url.rstrip("/").endswith("/api/reports"),
         timeout=15_000,
