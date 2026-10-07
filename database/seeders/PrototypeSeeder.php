@@ -5,30 +5,31 @@ namespace Database\Seeders;
 use App\Models\ActionItem;
 use App\Models\Assessor;
 use App\Models\CertificateIssuance;
-use App\Models\CertificationBatch;
 use App\Models\CertificationAppeal;
+use App\Models\CertificationBatch;
 use App\Models\CertificationScheme;
-use App\Models\Department;
-use App\Models\DataQualityRun;
-use App\Models\DataSource;
-use App\Models\DataImportBatch;
 use App\Models\ComplianceFinding;
 use App\Models\ComplianceObligation;
 use App\Models\CorrectiveAction;
+use App\Models\DataImportBatch;
+use App\Models\DataQualityRun;
+use App\Models\DataSource;
+use App\Models\Department;
 use App\Models\FinanceInvoice;
 use App\Models\FinancePayment;
 use App\Models\FinancialRecord;
+use App\Models\IntegrationProfile;
 use App\Models\ItIncident;
 use App\Models\ItService;
-use App\Models\IntegrationProfile;
-use App\Models\KpiDefinition;
 use App\Models\KpiConfiguration;
+use App\Models\KpiDefinition;
 use App\Models\KpiMeasurement;
-use App\Models\RiskSignal;
 use App\Models\ManagementReview;
 use App\Models\ManagementReviewItem;
+use App\Models\RiskSignal;
 use App\Models\Tuk;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -39,6 +40,8 @@ class PrototypeSeeder extends Seeder
      */
     public function run(): void
     {
+        // Keep synthetic operating data stable across calendar dates.
+        $prototypePeriod = CarbonImmutable::parse('2026-09-01');
         if (app()->environment('production') && ! config('nadi.allow_demo_seed')) {
             throw new \RuntimeException('PrototypeSeeder diblokir di production. Gunakan nadi:create-admin dan onboarding data nyata.');
         }
@@ -114,7 +117,7 @@ class PrototypeSeeder extends Seeder
                 continue;
             }
             foreach ($patterns[$kpi->code] as $index => $actual) {
-                KpiMeasurement::create(['kpi_definition_id' => $kpi->id, 'period' => now()->startOfMonth()->subMonths(11 - $index), 'actual' => $actual, 'target_snapshot' => $kpi->target, 'notes' => 'Data prototipe sintetis untuk demonstrasi.', 'recorded_by' => $users->first()->id]);
+                KpiMeasurement::create(['kpi_definition_id' => $kpi->id, 'period' => $prototypePeriod->startOfMonth()->subMonths(11 - $index), 'actual' => $actual, 'target_snapshot' => $kpi->target, 'notes' => 'Data prototipe sintetis untuk demonstrasi.', 'recorded_by' => $users->first()->id]);
             }
         }
 
@@ -134,7 +137,7 @@ class PrototypeSeeder extends Seeder
 
         for ($month = 11; $month >= 0; $month--) {
             for ($n = 1; $n <= 2; $n++) {
-                $date = now()->startOfMonth()->subMonths($month)->addDays(7 + ($n * 8));
+                $date = $prototypePeriod->startOfMonth()->subMonths($month)->addDays(7 + ($n * 8));
                 $total = 92 + (($month * 13 + $n * 17) % 48);
                 $decided = $month > 0 || ($month === 0 && $n === 1);
                 $completed = $month > 0;
@@ -188,7 +191,7 @@ class PrototypeSeeder extends Seeder
                 }
             }
 
-            $date = now()->startOfMonth()->subMonths($month)->addDays(15);
+            $date = $prototypePeriod->startOfMonth()->subMonths($month)->addDays(15);
             $revenue = 920_000_000 + ((11 - $month) * 31_000_000) + (($month % 3) * 42_000_000);
             $budget = 770_000_000 + (($month % 4) * 18_000_000);
             $expense = (int) ($budget * (0.90 + (($month % 5) / 100)));
@@ -267,7 +270,7 @@ class PrototypeSeeder extends Seeder
         }
 
         foreach ($patterns['IT-DATA'] as $index => $qualityScore) {
-            $assessedAt = now()->startOfMonth()->subMonths(11 - $index)->addDays(20)->setTime(15, 0);
+            $assessedAt = $prototypePeriod->startOfMonth()->subMonths(11 - $index)->addDays(20)->setTime(15, 0);
             if ($assessedAt->isFuture()) {
                 $assessedAt = now()->subHours(2);
             }
@@ -435,7 +438,6 @@ class PrototypeSeeder extends Seeder
         ] as $row) {
             ActionItem::create(['department_id' => $departments[$row[0]]->id, 'kpi_definition_id' => $byCode[$row[1]]->id, 'title' => $row[2], 'description' => $row[3], 'priority' => $row[4], 'owner_name' => $row[5], 'due_date' => today()->addDays($row[6]), 'status' => $row[7], 'created_by' => $users->first()->id]);
         }
-
 
         $historicalSignal = RiskSignal::create([
             'fingerprint' => 'demo:management-review:historical',

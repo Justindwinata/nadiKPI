@@ -118,6 +118,7 @@ class OperationalWorkflowTest extends TestCase
             ->assertJsonPath('rejected', 1);
         $this->assertDatabaseHas('audit_logs', ['action' => 'import', 'entity_type' => 'App\\Models\\DataImportBatch']);
     }
+
     public function test_certification_lifecycle_records_decision_issuance_and_completion(): void
     {
         $head = User::where('email', 'sertifikasi@demo.test')->firstOrFail();
@@ -183,7 +184,6 @@ class OperationalWorkflowTest extends TestCase
             'entity_type' => 'App\\Models\\CertificateIssuance',
         ]);
     }
-
 
     public function test_certification_decision_timestamp_cannot_move_after_existing_issuance(): void
     {
@@ -251,7 +251,7 @@ class OperationalWorkflowTest extends TestCase
             'certification_scheme_id' => $scheme->id,
             'tuk_id' => $tuk->id,
             'assessor_id' => $assessor->id,
-            'assessment_date' => '2026-10-12',
+            'assessment_date' => '2026-10-06',
             'total_assesi' => 10,
             'revenue' => 42500000,
             'status' => 'assessment',
@@ -261,8 +261,8 @@ class OperationalWorkflowTest extends TestCase
             'status' => 'decision',
             'passed' => 8,
             'failed' => 2,
-            'assessment_completed_at' => '2026-10-12T17:00:00+07:00',
-            'decision_at' => '2026-10-13T10:00:00+07:00',
+            'assessment_completed_at' => '2026-10-06T17:00:00+07:00',
+            'decision_at' => '2026-10-07T10:00:00+07:00',
         ])->assertOk();
 
         $dashboard = $this->actingAs($director)->getJson('/api/dashboard?year=2026&month=10')->assertOk()->json('overview.kpis');
@@ -624,7 +624,6 @@ class OperationalWorkflowTest extends TestCase
         ])->assertUnprocessable()->assertInvalid(['valid_records']);
     }
 
-
     public function test_current_month_derived_kpis_ignore_future_dated_transactions(): void
     {
         CarbonImmutable::setTestNow('2026-09-15 12:00:00');
@@ -784,7 +783,6 @@ class OperationalWorkflowTest extends TestCase
         $this->assertSame($baselineBacklog + 10, (int) $after->json('summary.certificate_backlog'));
         $this->assertSame($baselineActive + 1, (int) $after->json('summary.active_batches'));
     }
-
 
     public function test_historical_certification_rows_hide_decision_and_issuance_after_cutoff(): void
     {
@@ -1020,5 +1018,4 @@ class OperationalWorkflowTest extends TestCase
         $this->assertNull($row['resolution_summary']);
         $this->assertNull($row['root_cause']);
     }
-
 }

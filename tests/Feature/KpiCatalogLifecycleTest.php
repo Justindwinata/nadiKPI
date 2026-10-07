@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
 use App\Models\CertificationBatch;
 use App\Models\CertificationScheme;
+use App\Models\DataImportBatch;
 use App\Models\Department;
 use App\Models\KpiDefinition;
-use App\Models\DataImportBatch;
+use App\Models\KpiMeasurement;
 use App\Models\User;
 use Database\Seeders\PrototypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -102,14 +104,14 @@ class KpiCatalogLifecycleTest extends TestCase
             'actual' => 93,
         ]);
 
-        $measurementId = \App\Models\KpiMeasurement::query()
+        $measurementId = KpiMeasurement::query()
             ->where('kpi_definition_id', $kpiId)
             ->whereDate('period', '2026-09-01')
             ->value('id');
         $this->assertNotNull($measurementId);
         $this->assertDatabaseHas('audit_logs', [
             'action' => 'create_measurement',
-            'entity_type' => \App\Models\KpiMeasurement::class,
+            'entity_type' => KpiMeasurement::class,
             'entity_id' => $measurementId,
         ]);
 
@@ -118,9 +120,9 @@ class KpiCatalogLifecycleTest extends TestCase
             'actual' => 94,
         ])->assertOk();
 
-        $audit = \App\Models\AuditLog::query()
+        $audit = AuditLog::query()
             ->where('action', 'update_measurement')
-            ->where('entity_type', \App\Models\KpiMeasurement::class)
+            ->where('entity_type', KpiMeasurement::class)
             ->where('entity_id', $measurementId)
             ->latest('id')
             ->firstOrFail();
@@ -162,14 +164,15 @@ class KpiCatalogLifecycleTest extends TestCase
             ->assertJsonPath('rejected', 0)
             ->assertJsonPath('import_batch.dataset_type', 'kpi_manual_measurements');
 
-        $this->assertDatabaseHas('kpi_measurements', [
-            'kpi_definition_id' => $kpiId,
-            'period' => '2026-09-01',
-            'actual' => 94,
-            'target_snapshot' => 96,
-            'source_type' => 'csv_import',
-            'data_import_batch_id' => $response->json('import_batch.id'),
-        ]);
+        $measurement = KpiMeasurement::query()
+            ->where('kpi_definition_id', $kpiId)
+            ->where('data_import_batch_id', $response->json('import_batch.id'))
+            ->firstOrFail();
+        $this->assertSame('2026-09-01', $measurement->period->toDateString());
+        $this->assertSame(94.0, (float) $measurement->actual);
+        $this->assertSame(96.0, (float) $measurement->target_snapshot);
+        $this->assertSame('csv_import', $measurement->source_type);
+        $this->assertSame($response->json('import_batch.id'), $measurement->data_import_batch_id);
         $this->assertSame('kpi_manual_measurements', DataImportBatch::findOrFail($response->json('import_batch.id'))->dataset_type);
     }
 
@@ -195,21 +198,21 @@ class KpiCatalogLifecycleTest extends TestCase
             'change_reason' => 'Regression idempotency CSV.',
         ])->assertCreated();
 
-        $content = "kpi_code,period,actual,notes
+        $content = 'kpi_code,period,actual,notes
 FIN-CSV-IDEMPOTENT,2026-09-01,93,Import pertama
-";
+';
         $first = $this->actingAs($financeHead)->postJson('/api/data/import', [
             'file' => UploadedFile::fake()->createWithContent('idempotent-a.csv', $content),
         ])->assertOk()->assertJsonPath('imported', 1);
 
-        $measurementId = \App\Models\KpiMeasurement::query()
+        $measurementId = KpiMeasurement::query()
             ->where('kpi_definition_id', $created->json('kpi.id'))
             ->whereDate('period', '2026-09-01')
             ->value('id');
         $this->assertNotNull($measurementId);
         $this->assertDatabaseHas('audit_logs', [
             'action' => 'csv_create_measurement',
-            'entity_type' => \App\Models\KpiMeasurement::class,
+            'entity_type' => KpiMeasurement::class,
             'entity_id' => $measurementId,
         ]);
 
@@ -217,17 +220,17 @@ FIN-CSV-IDEMPOTENT,2026-09-01,93,Import pertama
             'file' => UploadedFile::fake()->createWithContent('idempotent-b.csv', $content),
         ])->assertUnprocessable()->assertJsonValidationErrors(['file']);
 
-        $this->assertSame(93.0, (float) \App\Models\KpiMeasurement::findOrFail($measurementId)->actual);
+        $this->assertSame(93.0, (float) KpiMeasurement::findOrFail($measurementId)->actual);
 
         $correctedContent = "kpi_code,period,actual,notes\nFIN-CSV-IDEMPOTENT,2026-09-01,94,Koreksi terkontrol\n";
         $this->actingAs($financeHead)->postJson('/api/data/import', [
             'file' => UploadedFile::fake()->createWithContent('idempotent-correction.csv', $correctedContent),
         ])->assertOk()->assertJsonPath('imported', 1);
 
-        $this->assertSame(94.0, (float) \App\Models\KpiMeasurement::findOrFail($measurementId)->actual);
+        $this->assertSame(94.0, (float) KpiMeasurement::findOrFail($measurementId)->actual);
         $this->assertDatabaseHas('audit_logs', [
             'action' => 'csv_update_measurement',
-            'entity_type' => \App\Models\KpiMeasurement::class,
+            'entity_type' => KpiMeasurement::class,
             'entity_id' => $measurementId,
         ]);
         $this->assertSame('completed', DataImportBatch::findOrFail($first->json('import_batch.id'))->status);
@@ -341,5 +344,4 @@ FIN-CSV-IDEMPOTENT,2026-09-01,93,Import pertama
             'status' => 'planned',
         ])->assertUnprocessable()->assertJsonValidationErrors(['certification_scheme_id']);
     }
-
 }

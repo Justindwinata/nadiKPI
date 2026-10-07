@@ -11,7 +11,6 @@ use App\Models\CorrectiveAction;
 use App\Models\DataImportBatch;
 use App\Models\DataSource;
 use App\Models\Department;
-use App\Models\KpiDefinition;
 use App\Models\KpiMeasurement;
 use App\Models\ManagementReview;
 use App\Models\ManagementReviewItem;
@@ -207,33 +206,50 @@ class ReportingService
     private function executivePayload(CarbonImmutable $start, CarbonImmutable $end): array
     {
         $overview = $this->analytics->overview(null, $end);
+        $decisions = $this->decisionData(null, $start, $end);
+
         return [
             'overview' => $overview,
             'certification' => $this->analytics->certification($end),
             'finance' => $this->analytics->finance($end),
             'it' => $this->analytics->it($end),
             'governance' => $this->governanceData($start, $end),
-            'decisions' => $this->decisionData(null, $start, $end),
+            'decisions' => $decisions,
+            'signals' => $decisions['signals'],
+            'management_reviews' => $decisions['management_reviews'],
         ];
     }
 
     private function departmentPayload(Department $department, CarbonImmutable $start, CarbonImmutable $end): array
     {
+        $decisions = $this->decisionData($department->id, $start, $end);
         $content = [
             'department' => ['id' => $department->id, 'code' => $department->code, 'name' => $department->name],
             'overview' => $this->analytics->overview($department->code, $end),
-            'decisions' => $this->decisionData($department->id, $start, $end),
+            'decisions' => $decisions,
+            'signals' => $decisions['signals'],
+            'management_reviews' => $decisions['management_reviews'],
         ];
-        if ($department->code === 'certification') $content['operations'] = $this->analytics->certification($end);
-        if ($department->code === 'finance') $content['operations'] = $this->analytics->finance($end);
-        if ($department->code === 'it') $content['operations'] = $this->analytics->it($end);
-        if ($department->code === 'quality') $content['operations'] = $this->governanceData($start, $end);
+        if ($department->code === 'certification') {
+            $content['operations'] = $this->analytics->certification($end);
+        }
+        if ($department->code === 'finance') {
+            $content['operations'] = $this->analytics->finance($end);
+        }
+        if ($department->code === 'it') {
+            $content['operations'] = $this->analytics->it($end);
+        }
+        if ($department->code === 'quality') {
+            $content['operations'] = $this->governanceData($start, $end);
+        }
 
         return $content;
     }
 
     private function domainPayload(string $domain, CarbonImmutable $start, CarbonImmutable $end): array
     {
+        $decisions = $this->decisionData(Department::query()->where('code', $domain)->value('id'), $start, $end);
+
         return [
             'overview' => $this->analytics->overview($domain, $end),
             'operations' => match ($domain) {
@@ -241,7 +257,9 @@ class ReportingService
                 'finance' => $this->analytics->finance($end),
                 'it' => $this->analytics->it($end),
             },
-            'decisions' => $this->decisionData(Department::query()->where('code', $domain)->value('id'), $start, $end),
+            'decisions' => $decisions,
+            'signals' => $decisions['signals'],
+            'management_reviews' => $decisions['management_reviews'],
         ];
     }
 
@@ -253,12 +271,20 @@ class ReportingService
     private function decisionPayload(User $user, CarbonImmutable $start, CarbonImmutable $end): array
     {
         $departmentId = $user->role === 'director' || $user->department?->code === 'quality' ? null : $user->department_id;
-        return ['decisions' => $this->decisionData($departmentId, $start, $end)];
+        $decisions = $this->decisionData($departmentId, $start, $end);
+
+        return [
+            'decisions' => $decisions,
+            'signals' => $decisions['signals'],
+            'actions' => $decisions['actions'],
+            'management_reviews' => $decisions['management_reviews'],
+        ];
     }
 
     private function managementReviewPayload(ManagementReview $review): array
     {
         $review->load(['creator:id,name,position', 'approver:id,name,position', 'items.signal.department', 'items.signal.kpi', 'items.action.department', 'items.action.kpi']);
+
         return [
             'review' => $this->normalize($review),
             'signals' => $review->items->pluck('signal')->filter()->unique('id')->values(),
@@ -414,6 +440,7 @@ class ReportingService
             $row['resolved_at_as_of'] = $row['resolved_at'];
             $row['resolved_by'] = $resolvedVisible ? $signal->resolved_by : null;
             $row['resolution_note'] = $resolvedVisible ? $signal->resolution_note : null;
+
             return $row;
         });
         $actionRows = $actions->map(function (ActionItem $action) use ($end): array {
@@ -433,6 +460,7 @@ class ReportingService
             $row['completed_at_as_of'] = $row['completed_at'];
             $row['resolution_note'] = $completedVisible ? $action->resolution_note : null;
             $row['resolution_evidence'] = $completedVisible ? $action->resolution_evidence : null;
+
             return $row;
         });
 
@@ -455,8 +483,10 @@ class ReportingService
                     foreach (['decision', 'owner_name', 'due_date', 'status'] as $field) {
                         $itemRow[$field] = $this->auditedFieldRollbackAsOf($itemLogs, $field, $itemRow[$field] ?? null, $end);
                     }
+
                     return $itemRow;
                 })->values()->all();
+
             return $row;
         });
 
@@ -502,6 +532,7 @@ class ReportingService
                 $value = $changes['before'][$field];
             }
         }
+
         return $value;
     }
 
@@ -555,16 +586,28 @@ class ReportingService
         if ($signal->resolved_at && $signal->resolved_at->lte($end)) {
             return in_array($signal->status, ['resolved', 'dismissed'], true) ? $signal->status : 'resolved';
         }
-        if ($signal->escalated_at && $signal->escalated_at->lte($end)) return 'in_progress';
-        if ($signal->acknowledged_at && $signal->acknowledged_at->lte($end)) return 'acknowledged';
+        if ($signal->escalated_at && $signal->escalated_at->lte($end)) {
+            return 'in_progress';
+        }
+        if ($signal->acknowledged_at && $signal->acknowledged_at->lte($end)) {
+            return 'acknowledged';
+        }
+
         return 'open';
     }
 
     private function actionStatusAsOf(ActionItem $action, CarbonImmutable $end): string
     {
-        if ($action->completed_at && $action->completed_at->lte($end)) return 'completed';
-        if ($action->escalated_at && $action->escalated_at->lte($end)) return 'in_progress';
-        if ($action->acknowledged_at && $action->acknowledged_at->lte($end)) return 'in_progress';
+        if ($action->completed_at && $action->completed_at->lte($end)) {
+            return 'completed';
+        }
+        if ($action->escalated_at && $action->escalated_at->lte($end)) {
+            return 'in_progress';
+        }
+        if ($action->acknowledged_at && $action->acknowledged_at->lte($end)) {
+            return 'in_progress';
+        }
+
         return 'open';
     }
 
@@ -673,10 +716,16 @@ class ReportingService
     {
         $kpis = collect();
         $walk = function ($value) use (&$walk, &$kpis): void {
-            if (! is_array($value)) return;
+            if (! is_array($value)) {
+                return;
+            }
             foreach ($value as $key => $child) {
                 if ($key === 'kpis' && is_array($child) && array_is_list($child)) {
-                    foreach ($child as $row) if (is_array($row) && isset($row['code'])) $kpis->push($row);
+                    foreach ($child as $row) {
+                        if (is_array($row) && isset($row['code'])) {
+                            $kpis->push($row);
+                        }
+                    }
                 }
                 $walk($child);
             }
@@ -701,10 +750,16 @@ class ReportingService
     private function resolveDepartment(User $user, ?string $code): Department
     {
         if ($user->role !== 'director') {
-            if (! $user->department) throw ValidationException::withMessages(['department_code' => 'Akun tidak memiliki divisi.']);
+            if (! $user->department) {
+                throw ValidationException::withMessages(['department_code' => 'Akun tidak memiliki divisi.']);
+            }
+
             return $user->department;
         }
-        if (! $code) throw ValidationException::withMessages(['department_code' => 'Divisi wajib dipilih untuk laporan kinerja divisi.']);
+        if (! $code) {
+            throw ValidationException::withMessages(['department_code' => 'Divisi wajib dipilih untuk laporan kinerja divisi.']);
+        }
+
         return Department::query()->where('code', $code)->where('code', '!=', 'leadership')->firstOrFail();
     }
 
@@ -713,6 +768,7 @@ class ReportingService
         $requestedEnd = CarbonImmutable::instance($period)->endOfMonth();
         $now = CarbonImmutable::now();
         $end = $requestedEnd->greaterThan($now) ? $now : $requestedEnd;
+
         return [$end->startOfMonth(), $end];
     }
 
@@ -733,6 +789,7 @@ class ReportingService
     private function nextReference(string $type): string
     {
         $prefix = strtoupper(substr(str_replace('_', '', $type), 0, 8));
+
         return sprintf('RPT-%s-%s-%s', $prefix, now()->format('YmdHis'), strtoupper(Str::random(5)));
     }
 
@@ -749,12 +806,19 @@ class ReportingService
     private function canonicalJson(array $payload): string
     {
         $sort = function (&$value) use (&$sort): void {
-            if (! is_array($value)) return;
-            foreach ($value as &$child) $sort($child);
-            if (! array_is_list($value)) ksort($value);
+            if (! is_array($value)) {
+                return;
+            }
+            foreach ($value as &$child) {
+                $sort($child);
+            }
+            if (! array_is_list($value)) {
+                ksort($value);
+            }
         };
         $copy = $payload;
         $sort($copy);
+
         return json_encode($copy, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
     }
 }

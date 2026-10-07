@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class KpiDefinition extends Model
 {
     public const SYSTEM_DERIVED_CODES = ['CERT-VOLUME', 'CERT-PASS', 'CERT-SLA', 'FIN-REV', 'FIN-MARGIN', 'FIN-BUDGET', 'IT-UPTIME', 'IT-MTTR', 'IT-DATA'];
+
     protected $guarded = [];
 
     protected function casts(): array
@@ -33,7 +34,7 @@ class KpiDefinition extends Model
 
         return $configs
             ->filter(fn (KpiConfiguration $config) => $config->effective_from->lte($date)
-                && (! $config->effective_until || $config->effective_until->gte($date)))
+                && (! $config->effective_until || $config->effective_until->endOfDay()->gte($date)))
             ->sortByDesc('effective_from')
             ->first();
     }

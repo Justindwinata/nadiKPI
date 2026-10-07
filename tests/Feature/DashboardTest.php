@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ActionItem;
-use App\Models\KpiDefinition;
+use App\Models\Department;
 use App\Models\User;
 use Database\Seeders\PrototypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,7 +71,7 @@ class DashboardTest extends TestCase
     public function test_historical_overview_uses_action_state_as_of_cutoff_and_excludes_future_actions(): void
     {
         $director = User::where('role', 'director')->firstOrFail();
-        $department = $director->department_id ? $director->department : \App\Models\Department::where('code', 'finance')->firstOrFail();
+        $department = $director->department_id ? $director->department : Department::where('code', 'finance')->firstOrFail();
 
         $baseline = $this->actingAs($director)->getJson('/api/dashboard?year=2026&month=8')->assertOk();
         $baselineOpen = (int) $baseline->json('overview.open_actions');
@@ -123,11 +123,15 @@ class DashboardTest extends TestCase
         $director = User::where('role', 'director')->firstOrFail();
         $action = ActionItem::firstOrFail();
 
-        $this->actingAs($director)->patchJson("/api/actions/{$action->id}", ['status' => 'completed'])
+        $this->actingAs($director)->patchJson("/api/actions/{$action->id}", [
+            'status' => 'completed',
+            'resolution_note' => 'Action selesai dan hasilnya telah diverifikasi.',
+            'resolution_evidence' => 'DASHBOARD-ACTION-001',
+        ])
             ->assertOk()
             ->assertJsonPath('action.status', 'completed');
 
-        $this->assertDatabaseHas('audit_logs', ['action' => 'status_change']);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'update_action_workflow']);
         $this->assertNotNull($action->fresh()->completed_at);
     }
 }

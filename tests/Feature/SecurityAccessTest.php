@@ -169,6 +169,7 @@ class SecurityAccessTest extends TestCase
 
         $this->assertTrue($director->fresh()->is_active);
     }
+
     public function test_demo_access_endpoint_is_disabled_unless_demo_mode_is_enabled(): void
     {
         config(['nadi.demo_mode' => false]);
@@ -219,7 +220,7 @@ class SecurityAccessTest extends TestCase
             ->assertHeader('Content-Security-Policy');
         $this->assertFalse($http->headers->has('Strict-Transport-Security'));
 
-        $https = $this->withServerVariables(['HTTPS' => 'on'])->get('/up');
+        $https = $this->get('https://nadi.example.test/up');
         $https->assertOk()
             ->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
             ->assertHeader('Content-Security-Policy');
@@ -229,5 +230,4 @@ class SecurityAccessTest extends TestCase
         $this->assertStringContainsString("frame-ancestors 'none'", $csp);
         $this->assertStringContainsString("script-src 'self'", $csp);
     }
-
 }

@@ -166,13 +166,14 @@ class DecisionController extends Controller
                 'kpi_definition_id' => $locked->kpi_definition_id,
                 'risk_signal_id' => $locked->id,
                 'status' => 'open',
-                'created_by' => $actor->id,
+                'created_by' => $request->user()->id,
                 'updated_by' => $request->user()->id,
             ]);
             if (! $locked->acknowledged_at) {
                 $locked->update(['status' => 'in_progress', 'acknowledged_at' => now(), 'acknowledged_by' => $request->user()->id]);
             }
             $this->audit($request, 'create_decision_action', ActionItem::class, $action->id, ['risk_signal_id' => $locked->id, 'data' => $data]);
+
             return $action;
         });
 
@@ -212,7 +213,9 @@ class DecisionController extends Controller
                 ]);
             }
 
-            do { $reference = 'MR-'.now()->format('Ym').'-'.Str::upper(Str::random(6)); } while (ManagementReview::where('reference', $reference)->exists());
+            do {
+                $reference = 'MR-'.now()->format('Ym').'-'.Str::upper(Str::random(6));
+            } while (ManagementReview::where('reference', $reference)->exists());
             $review = ManagementReview::create([
                 'reference' => $reference,
                 'title' => $data['title'],
@@ -236,6 +239,7 @@ class DecisionController extends Controller
                 ]);
             }
             $this->audit($request, 'create_management_review', ManagementReview::class, $review->id, ['reference' => $reference, 'signal_ids' => $data['signal_ids']]);
+
             return $review;
         });
 
@@ -325,19 +329,25 @@ class DecisionController extends Controller
     private function authorizeSignal(User $user, RiskSignal $signal): void
     {
         abort_unless($user->hasPermission('decisions.manage'), 403);
-        if ($user->role === 'director' || $user->department?->code === 'quality') return;
+        if ($user->role === 'director' || $user->department?->code === 'quality') {
+            return;
+        }
         abort_unless($signal->department_id && $signal->department_id === $user->department_id, 403);
     }
 
     private function scopeSignals(Builder $query, User $user): void
     {
-        if ($user->role === 'director' || $user->department?->code === 'quality') return;
+        if ($user->role === 'director' || $user->department?->code === 'quality') {
+            return;
+        }
         $query->where('department_id', $user->department_id);
     }
 
     private function scopeActions(Builder $query, User $user): void
     {
-        if ($user->role === 'director' || $user->department?->code === 'quality') return;
+        if ($user->role === 'director' || $user->department?->code === 'quality') {
+            return;
+        }
         $query->where('department_id', $user->department_id);
     }
 

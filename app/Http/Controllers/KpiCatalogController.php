@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Department;
-use App\Models\KpiConfiguration;
 use App\Models\KpiDefinition;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -138,6 +137,7 @@ class KpiCatalogController extends Controller
             $before = $locked->only(['name', 'description', 'unit', 'cadence', 'data_source']);
             $locked->update(collect($data)->except('change_reason')->all());
             $this->audit($request, 'update_kpi_definition', $locked, ['before' => $before, 'after' => $locked->fresh()->only(array_keys($before)), 'reason' => $data['change_reason']]);
+
             return $locked->fresh();
         });
 
@@ -170,7 +170,9 @@ class KpiCatalogController extends Controller
             }
 
             if ($previous && (! $previous->effective_until || $from->lte($previous->effective_until))) {
-                $previous->update(['effective_until' => $from->subDay()->toDateString()]);
+                DB::table('kpi_configurations')
+                    ->where('id', $previous->id)
+                    ->update(['effective_until' => $from->subDay()->toDateString()]);
             }
 
             $futureConflict = $lockedKpi->configurations()

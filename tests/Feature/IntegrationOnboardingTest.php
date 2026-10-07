@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CertificationBatch;
 use App\Models\CertificationScheme;
+use App\Models\DataImportBatch;
 use App\Models\DataSource;
 use App\Models\FinanceInvoice;
 use App\Models\IntegrationRecordLink;
@@ -79,9 +80,10 @@ class IntegrationOnboardingTest extends TestCase
             'file' => UploadedFile::fake()->createWithContent('same-2.csv', $content),
             'data_source_id' => $source->id,
             'dataset_type' => 'tuks',
-        ])->assertSessionHasErrors('file');
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('file');
 
-        $this->assertSame(1, \App\Models\DataImportBatch::query()
+        $this->assertSame(1, DataImportBatch::query()
             ->where('data_source_id', $source->id)
             ->where('dataset_type', 'tuks')
             ->where('sha256', hash('sha256', $content))
@@ -183,7 +185,6 @@ class IntegrationOnboardingTest extends TestCase
         $this->assertSame(1, IntegrationRecordLink::where('dataset_type', 'finance_invoices')->where('external_key', 'INV-EXT-001')->count());
     }
 
-
     public function test_lower_authority_source_cannot_overwrite_entity_owned_by_higher_authority_source(): void
     {
         $head = User::where('email', 'sertifikasi@demo.test')->firstOrFail();
@@ -208,7 +209,6 @@ class IntegrationOnboardingTest extends TestCase
 
         $this->assertSame(100, (int) Tuk::where('code', 'TUK-AUTH-001')->value('monthly_capacity'));
     }
-
 
     public function test_publish_rechecks_authority_after_staging_before_mutating_entity(): void
     {
@@ -293,7 +293,6 @@ class IntegrationOnboardingTest extends TestCase
             ->assertForbidden();
     }
 
-
     public function test_integration_cannot_regress_existing_certification_lifecycle(): void
     {
         $head = User::where('email', 'sertifikasi@demo.test')->firstOrFail();
@@ -318,8 +317,8 @@ class IntegrationOnboardingTest extends TestCase
             'certificate_due_at' => '2026-10-17 10:00:00',
         ]);
 
-        $header = "code,scheme_code,tuk_code,assessor_registration_no,assessment_date,total_assesi,passed,failed,pending,revenue,status,assessment_completed_at,decision_at,certificate_due_at,completed_at
-";
+        $header = 'code,scheme_code,tuk_code,assessor_registration_no,assessment_date,total_assesi,passed,failed,pending,revenue,status,assessment_completed_at,decision_at,certificate_due_at,completed_at
+';
         $row = "{$batch->code},{$scheme->code},{$tuk->code},,2026-09-15,2,2,0,0,0,assessment,2026-09-15 16:00:00,,,
 ";
         $batchId = $this->actingAs($head)->post('/api/integrations/stage', [
@@ -355,8 +354,8 @@ class IntegrationOnboardingTest extends TestCase
             'assessment_completed_at' => '2026-09-15 16:00:00',
         ]);
 
-        $header = "code,scheme_code,tuk_code,assessor_registration_no,assessment_date,total_assesi,passed,failed,pending,revenue,status,assessment_completed_at,decision_at,certificate_due_at,completed_at
-";
+        $header = 'code,scheme_code,tuk_code,assessor_registration_no,assessment_date,total_assesi,passed,failed,pending,revenue,status,assessment_completed_at,decision_at,certificate_due_at,completed_at
+';
         $row = "{$batch->code},{$scheme->code},{$tuk->code},,2026-09-15,1,1,0,0,0,decision,2026-09-15 16:00:00,2026-09-17 10:00:00,2099-12-31 23:59:59,
 ";
         $batchId = $this->actingAs($head)->post('/api/integrations/stage', [
@@ -388,8 +387,8 @@ class IntegrationOnboardingTest extends TestCase
             'resolved_by' => $head->id,
         ]);
 
-        $header = "reference,service_name,severity,status,started_at,acknowledged_at,resolved_at,summary,resolution_summary,root_cause
-";
+        $header = 'reference,service_name,severity,status,started_at,acknowledged_at,resolved_at,summary,resolution_summary,root_cause
+';
         $row = "{$incident->reference},{$service->name},high,investigating,2026-09-20 10:00:00,2026-09-20 10:05:00,,Attempt reopen,,Regression test
 ";
         $batchId = $this->actingAs($head)->post('/api/integrations/stage', [

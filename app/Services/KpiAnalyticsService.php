@@ -30,7 +30,10 @@ class KpiAnalyticsService
             ->get()
             ->filter(function (KpiDefinition $definition) use ($end) {
                 $config = $definition->configurationFor($end);
-                return $definition->configurations->isEmpty() ? (bool) $definition->is_active : (bool) ($config?->is_active ?? false);
+
+                return $config
+                    ? (bool) $config->is_active
+                    : (bool) $definition->is_active;
             });
 
         $cards = $definitions->map(fn (KpiDefinition $definition) => $this->formatKpi($definition, $end));
@@ -311,10 +314,12 @@ class KpiAnalyticsService
 
         $possibleMinutes = $services->sum(function (ItService $service) use ($start, $end): float {
             [$serviceStart, $serviceEnd] = $this->serviceAvailabilityWindow($service, $start, $end);
+
             return max(0, $serviceStart->diffInMinutes($serviceEnd));
         });
         $downtimeMinutes = $services->sum(function (ItService $service) use ($incidents, $start, $end): float {
             [$serviceStart, $serviceEnd] = $this->serviceAvailabilityWindow($service, $start, $end);
+
             return $this->uniqueDowntimeMinutes($incidents->where('it_service_id', $service->id), $serviceStart, $serviceEnd);
         });
         $uptime = $possibleMinutes > 0 ? max(0, 100 - ($downtimeMinutes / $possibleMinutes * 100)) : 0.0;
@@ -454,6 +459,7 @@ class KpiAnalyticsService
             'department' => $definition->department,
             'trend' => $series->map(function ($row) use ($definition, $target) {
                 $rowConfig = $definition->configurationFor($row['period_date'] ?? null);
+
                 return [
                     'period' => $row['period'],
                     'actual' => $row['actual'],
@@ -578,10 +584,12 @@ class KpiAnalyticsService
                 $activeServices = $services->filter(fn (ItService $service) => $this->serviceOverlapsWindow($service, $monthStart, $monthEnd));
                 $possibleMinutes = $activeServices->sum(function (ItService $service) use ($monthStart, $monthEnd): float {
                     [$serviceStart, $serviceEnd] = $this->serviceAvailabilityWindow($service, $monthStart, $monthEnd);
+
                     return max(0, $serviceStart->diffInMinutes($serviceEnd));
                 });
                 $downtimeMinutes = $activeServices->sum(function (ItService $service) use ($incidents, $monthStart, $monthEnd): float {
                     [$serviceStart, $serviceEnd] = $this->serviceAvailabilityWindow($service, $monthStart, $monthEnd);
+
                     return $this->uniqueDowntimeMinutes($incidents->where('it_service_id', $service->id), $serviceStart, $serviceEnd);
                 });
                 $actual = $possibleMinutes > 0 ? round(max(0, 100 - ($downtimeMinutes / $possibleMinutes * 100)), 3) : 0.0;
@@ -620,7 +628,6 @@ class KpiAnalyticsService
             'score' => $total > 0 ? round($valid / $total * 100, 2) : 0.0,
         ];
     }
-
 
     private function serviceOverlapsWindow(ItService $service, CarbonInterface $start, CarbonInterface $end): bool
     {
@@ -667,6 +674,7 @@ class KpiAnalyticsService
         foreach ($intervals->slice(1) as [$nextStart, $nextEnd]) {
             if ($nextStart <= $currentEnd) {
                 $currentEnd = max($currentEnd, $nextEnd);
+
                 continue;
             }
 
@@ -794,7 +802,6 @@ class KpiAnalyticsService
         return $row;
     }
 
-
     /**
      * Include batches whose current lifecycle dates have been corrected out of the
      * requested historical window. Without this candidate expansion the row can be
@@ -903,9 +910,13 @@ class KpiAnalyticsService
         $cutoff = CarbonImmutable::instance($end);
         $candidates = collect();
         $pushVisible = function (mixed $value) use ($candidates, $cutoff): void {
-            if (! $value) return;
+            if (! $value) {
+                return;
+            }
             $timestamp = CarbonImmutable::parse($value);
-            if ($timestamp->lte($cutoff)) $candidates->push($timestamp);
+            if ($timestamp->lte($cutoff)) {
+                $candidates->push($timestamp);
+            }
         };
 
         $definitions->flatMap->measurements->each(fn ($row) => $pushVisible($row->updated_at));
@@ -938,9 +949,15 @@ class KpiAnalyticsService
 
     private function actionStatusAsOf(ActionItem $action, CarbonInterface $end): string
     {
-        if ($action->completed_at && $action->completed_at->lte($end)) return 'completed';
-        if ($action->escalated_at && $action->escalated_at->lte($end)) return 'in_progress';
-        if ($action->acknowledged_at && $action->acknowledged_at->lte($end)) return 'in_progress';
+        if ($action->completed_at && $action->completed_at->lte($end)) {
+            return 'completed';
+        }
+        if ($action->escalated_at && $action->escalated_at->lte($end)) {
+            return 'in_progress';
+        }
+        if ($action->acknowledged_at && $action->acknowledged_at->lte($end)) {
+            return 'in_progress';
+        }
 
         return 'open';
     }
@@ -999,10 +1016,12 @@ class KpiAnalyticsService
                 $activeServices = $services->filter(fn (ItService $service) => $this->serviceOverlapsWindow($service, $monthStart, $monthEnd));
                 $downtimeMinutes = $activeServices->sum(function (ItService $service) use ($incidents, $monthStart, $monthEnd): float {
                     [$serviceStart, $serviceEnd] = $this->serviceAvailabilityWindow($service, $monthStart, $monthEnd);
+
                     return $this->uniqueDowntimeMinutes($incidents->where('it_service_id', $service->id), $serviceStart, $serviceEnd);
                 });
                 $possibleMinutes = $activeServices->sum(function (ItService $service) use ($monthStart, $monthEnd): float {
                     [$serviceStart, $serviceEnd] = $this->serviceAvailabilityWindow($service, $monthStart, $monthEnd);
+
                     return max(0, $serviceStart->diffInMinutes($serviceEnd));
                 });
                 $quality = $this->qualityTotals($qualityRuns->filter(fn ($run) => $run->assessed_at->betweenIncluded($monthStart, $monthEnd)));
