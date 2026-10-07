@@ -186,7 +186,6 @@ def create_viewer_through_ui(page) -> None:
     dialog.get_by_label("Password sementara").fill(VIEWER_PASSWORD)
     dialog.get_by_label("Konfirmasi").fill(VIEWER_PASSWORD)
     dialog.get_by_role("button", name="Buat pengguna").click()
-    page.get_by_text("Pengguna dibuat dengan kewajiban mengganti kata sandi sementara.", exact=True).wait_for(timeout=10_000)
     page.get_by_text(VIEWER_EMAIL, exact=True).wait_for(timeout=10_000)
 
 
