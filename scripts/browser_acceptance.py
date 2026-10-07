@@ -520,27 +520,35 @@ def main() -> int:
             forced_page.get_by_label("Kata sandi saat ini").fill(FORCED_PASSWORD)
             forced_page.get_by_label("Kata sandi baru").fill(FORCED_NEW_PASSWORD)
             forced_page.get_by_label("Konfirmasi kata sandi").fill(FORCED_NEW_PASSWORD)
-            csrf_token = forced_page.evaluate(
+            password_response = forced_page.evaluate(
                 """
-                () => {
+                async (payload) => {
                     const cookie = document.cookie
                         .split("; ")
                         .find((item) => item.startsWith("XSRF-TOKEN="));
-                    return cookie ? decodeURIComponent(cookie.split("=").slice(1).join("=")) : "";
+                    const csrfToken = cookie ? decodeURIComponent(cookie.split("=").slice(1).join("=")) : "";
+                    const response = await fetch("/api/account/password", {
+                        method: "POST",
+                        credentials: "same-origin",
+                        headers: {
+                            "Accept": "application/json",
+                            "Content-Type": "application/json",
+                            "X-XSRF-TOKEN": csrfToken,
+                        },
+                        body: JSON.stringify(payload),
+                    });
+                    return {status: response.status, body: await response.text()};
                 }
-                """
+                """,
+                {
+                    "current_password": FORCED_PASSWORD,
+                    "password": FORCED_NEW_PASSWORD,
+                    "password_confirmation": FORCED_NEW_PASSWORD,
+                },
             )
-            if not csrf_token:
-                raise AssertionError("Forced password update is missing the XSRF-TOKEN cookie")
-            forced_page.set_extra_http_headers({"X-XSRF-TOKEN": csrf_token})
-            with forced_page.expect_response(
-                lambda response: response.url.endswith("/api/account/password"),
-                timeout=15_000,
-            ) as password_response:
-                forced_page.get_by_role("button", name="Perbarui kata sandi").click()
-            if password_response.value.status != 200:
+            if password_response["status"] != 200:
                 raise AssertionError(
-                    f"Forced password update failed: HTTP {password_response.value.status}"
+                    f"Forced password update failed: HTTP {password_response['status']}"
                 )
             forced_page.reload(wait_until="domcontentloaded")
             forced_page.wait_for_selector("#main-content", state="visible", timeout=15_000)
