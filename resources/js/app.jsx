@@ -714,7 +714,7 @@ function ReportingPage() {
         ['Action overdue', overview?.overdue_actions],
     ].filter(([, value]) => value !== undefined && value !== null);
 
-    return <Page><PageHeader eyebrow="Reporting & Evidence" title="Laporan manajemen" description="Buat snapshot immutable dari angka dashboard, keputusan, dan provenance untuk rapat, audit, serta bukti manajemen." actions={<button className="primary-button compact" type="button" onClick={generate} disabled={generating || !reportType}>{generating ? <RefreshCw className="spin" size={17} /> : <ClipboardCheck size={17} />}{generating ? 'Membuat snapshot…' : 'Buat snapshot'}</button>} />
+    return <Page><PageHeader eyebrow="Reporting & Evidence" title="Laporan manajemen" description="Buat snapshot immutable dari angka dashboard, keputusan, dan provenance untuk rapat, audit, serta bukti manajemen." actions={<button className="primary-button compact" type="button" onClick={generate} disabled={generating}>{generating ? <RefreshCw className="spin" size={17} /> : <ClipboardCheck size={17} />}{generating ? 'Membuat snapshot…' : 'Buat snapshot'}</button>} />
         <section className="report-builder panel animate-in">
             <div className="panel-heading"><div><p className="eyebrow">Snapshot builder</p><h2>Pilih laporan dan periode</h2><p className="report-help">Snapshot yang sudah dibuat tidak ikut berubah ketika data operasional atau target KPI diperbarui di kemudian hari.</p></div><span>{catalog.length} tipe tersedia</span></div>
             <div className="report-controls">
