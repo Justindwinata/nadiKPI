@@ -224,11 +224,20 @@ def verify_viewer_boundary(browser, extra_headers, report_id: int) -> dict[str, 
 
     viewer_page.goto(f"{BASE_URL}/reports", wait_until="domcontentloaded")
     wait_for_operational_page(viewer_page)
+    viewer_report_button = viewer_page.get_by_role("button", name="Buat snapshot")
+    viewer_report_button.wait_for(state="visible", timeout=15_000)
+    viewer_report_select = viewer_page.get_by_label("Tipe laporan")
+    viewer_report_select.wait_for(state="visible", timeout=15_000)
+    viewer_report_select.select_option(index=0)
+    viewer_page.wait_for_function(
+        "() => [...document.querySelectorAll('button')].some(button => button.textContent.includes('Buat snapshot') && !button.disabled)",
+        timeout=15_000,
+    )
     with viewer_page.expect_response(
         lambda response: response.request.method == "POST" and response.url.rstrip("/").endswith("/api/reports"),
         timeout=15_000,
     ) as viewer_report_response_info:
-        viewer_page.get_by_role("button", name="Buat snapshot").click()
+        viewer_report_button.evaluate("(button) => button.click()")
     viewer_report_response = viewer_report_response_info.value
     if viewer_report_response.status != 201:
         raise AssertionError(f"Viewer department snapshot returned HTTP {viewer_report_response.status}")
