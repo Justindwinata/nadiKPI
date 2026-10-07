@@ -71,6 +71,18 @@ def wait_for_operational_page(page) -> None:
         raise AssertionError("Rendered page contains .error-state")
 
 
+def session_request(context, path: str):
+    url = f"{BASE_URL}{path}"
+    headers = {}
+    if HOST_HEADER and urlsplit(BASE_URL).hostname == HOST_HEADER:
+        parsed = urlsplit(BASE_URL)
+        url = urlunsplit((parsed.scheme, f"127.0.0.1:{parsed.port}" if parsed.port else "127.0.0.1", parsed.path, parsed.query, parsed.fragment))
+        cookies = context.cookies()
+        headers["Host"] = HOST_HEADER
+        headers["Cookie"] = "; ".join(f"{cookie['name']}={cookie['value']}" for cookie in cookies)
+    return context.request.get(url, headers=headers)
+
+
 def assert_no_global_overflow(page, label: str) -> None:
     overflow = page.evaluate(
         "() => ({w: document.documentElement.scrollWidth, vw: window.innerWidth, body: document.body.scrollWidth})"
@@ -162,7 +174,7 @@ def generate_report_and_verify_exports(page, context) -> dict[str, object]:
         link = preview.locator(f'a[href="/api/reports/{report_id}/export/{fmt}"]')
         if link.count() != 1:
             raise AssertionError(f"Missing {fmt.upper()} export link for generated snapshot")
-        export_response = context.request.get(f"{BASE_URL}/api/reports/{report_id}/export/{fmt}")
+        export_response = session_request(context, f"/api/reports/{report_id}/export/{fmt}")
         if export_response.status != 200:
             raise AssertionError(f"{fmt.upper()} export returned HTTP {export_response.status}")
         content_type = export_response.headers.get("content-type", "")
@@ -216,13 +228,13 @@ def verify_viewer_boundary(browser, extra_headers, report_id: int) -> dict[str, 
     viewer_page.goto(f"{BASE_URL}/finance", wait_until="domcontentloaded")
     viewer_page.wait_for_url("**/dashboard", timeout=10_000)
 
-    admin_api = viewer_context.request.get(f"{BASE_URL}/api/admin/users")
+    admin_api = session_request(viewer_context, "/api/admin/users")
     if admin_api.status != 403:
         raise AssertionError(f"Viewer admin API boundary expected 403, got {admin_api.status}")
-    report_api = viewer_context.request.get(f"{BASE_URL}/api/reports/{report_id}")
+    report_api = session_request(viewer_context, f"/api/reports/{report_id}")
     if report_api.status != 403:
         raise AssertionError(f"Viewer object-level report boundary expected 403, got {report_api.status}")
-    export_api = viewer_context.request.get(f"{BASE_URL}/api/reports/{report_id}/export/zip")
+    export_api = session_request(viewer_context, f"/api/reports/{report_id}/export/zip")
     if export_api.status != 403:
         raise AssertionError(f"Viewer report export boundary expected 403, got {export_api.status}")
 
@@ -254,7 +266,7 @@ def verify_viewer_boundary(browser, extra_headers, report_id: int) -> dict[str, 
     viewer_page.screenshot(path=str(ARTIFACT_DIR / "viewer-report.png"), full_page=True)
     if viewer_preview.locator(".report-export-actions a").count() != 0 or viewer_preview.get_by_role("button", name="Preview / Print PDF").count() != 0:
         raise AssertionError("Viewer unexpectedly has report export controls")
-    viewer_export_api = viewer_context.request.get(f"{BASE_URL}/api/reports/{viewer_report_id}/export/zip")
+    viewer_export_api = session_request(viewer_context, f"/api/reports/{viewer_report_id}/export/zip")
     if viewer_export_api.status != 403:
         raise AssertionError(f"Viewer own-report export boundary expected 403, got {viewer_export_api.status}")
     transport = assert_notification_center(viewer_page)
