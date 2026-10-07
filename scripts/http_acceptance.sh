@@ -87,6 +87,14 @@ status="$(curl -sS "${CURL_COMMON[@]}" -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
 expect_status 200 "$status" "administrator login"
 grep -q '"user"' "$LOGIN_BODY" || { echo 'FAIL: login response has no user payload' >&2; exit 1; }
 
+# Login regenerates the session, so refresh the CSRF token before the next state-changing request.
+curl -fsS "${CURL_COMMON[@]}" -b "$COOKIE_JAR" -c "$COOKIE_JAR" "$BASE_URL/" -o "$ROOT_HTML"
+CSRF_TOKEN="$(sed -n 's/.*<meta name="csrf-token" content="\([^"]*\)".*/\1/p' "$ROOT_HTML" | head -1)"
+if [[ -z "$CSRF_TOKEN" ]]; then
+  echo 'FAIL: could not refresh CSRF token after login' >&2
+  exit 1
+fi
+
 READ_ENDPOINTS=(
   '/api/me'
   '/api/dashboard'
