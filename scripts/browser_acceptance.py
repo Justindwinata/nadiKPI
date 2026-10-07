@@ -197,10 +197,18 @@ def create_viewer_through_ui(page) -> None:
     create_response = page.evaluate(
         """
         async (payload) => {
+            const csrfCookie = document.cookie
+                .split("; ")
+                .find((cookie) => cookie.startsWith("XSRF-TOKEN="));
+            const csrfToken = csrfCookie ? decodeURIComponent(csrfCookie.split("=").slice(1).join("=")) : "";
             const response = await fetch("/api/admin/users", {
                 method: "POST",
                 credentials: "same-origin",
-                headers: {"Accept": "application/json", "Content-Type": "application/json"},
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "X-XSRF-TOKEN": csrfToken,
+                },
                 body: JSON.stringify(payload),
             });
             return {status: response.status, body: await response.text()};
