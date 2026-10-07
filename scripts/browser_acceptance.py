@@ -78,7 +78,7 @@ def session_request(context, path: str):
         parsed = urlsplit(BASE_URL)
         url = urlunsplit((parsed.scheme, f"127.0.0.1:{parsed.port}" if parsed.port else "127.0.0.1", parsed.path, parsed.query, parsed.fragment))
         cookies = context.cookies()
-        headers["Host"] = HOST_HEADER
+        headers["Host"] = f"{HOST_HEADER}:{parsed.port}" if parsed.port else HOST_HEADER
         headers["Cookie"] = "; ".join(f"{cookie['name']}={cookie['value']}" for cookie in cookies)
     return context.request.get(url, headers=headers)
 
