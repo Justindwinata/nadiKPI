@@ -503,7 +503,7 @@ def main() -> int:
         # Logout/session UI path.
         page.goto(f"{BASE_URL}/dashboard", wait_until="domcontentloaded")
         wait_for_operational_page(page)
-        page.locator("button.user-card").click()
+        page.locator("button.user-card").evaluate("(button) => button.click()")
         page.wait_for_url("**/login", timeout=15_000)
         evidence["logout"] = "pass"
         context.close()
