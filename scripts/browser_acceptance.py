@@ -520,8 +520,16 @@ def main() -> int:
             forced_page.get_by_label("Kata sandi saat ini").fill(FORCED_PASSWORD)
             forced_page.get_by_label("Kata sandi baru").fill(FORCED_NEW_PASSWORD)
             forced_page.get_by_label("Konfirmasi kata sandi").fill(FORCED_NEW_PASSWORD)
-            forced_page.get_by_role("button", name="Perbarui kata sandi").click()
-            forced_page.locator(".forced-password-page").wait_for(state="hidden", timeout=15_000)
+            with forced_page.expect_response(
+                lambda response: response.url.endswith("/api/account/password"),
+                timeout=15_000,
+            ) as password_response:
+                forced_page.get_by_role("button", name="Perbarui kata sandi").click()
+            if password_response.value.status != 200:
+                raise AssertionError(
+                    f"Forced password update failed: HTTP {password_response.value.status}"
+                )
+            forced_page.reload(wait_until="domcontentloaded")
             forced_page.wait_for_selector("#main-content", state="visible", timeout=15_000)
             evidence["forced_password_flow"] = "pass"
             forced_context.close()
