@@ -195,7 +195,7 @@ def verify_source(repo: Path) -> dict[str, Any]:
         parts = Path(rel).parts
         if rel == "AUDITED_SOURCE_RC_MANIFEST.sha256":
             continue
-        if "__pycache__" in parts or rel.endswith(".pyc") or any(part in {"vendor", "node_modules", "artifacts"} for part in parts):
+        if "__pycache__" in parts or ".git" in parts or rel.endswith(".pyc") or any(part in {"vendor", "node_modules", "artifacts"} for part in parts):
             continue
         if parts and parts[0] in {"dist-gate-a", "dist-gate-b", "dist-final"}:
             continue
