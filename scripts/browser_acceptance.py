@@ -237,7 +237,7 @@ def verify_viewer_boundary(browser, extra_headers, report_id: int) -> dict[str, 
         lambda response: response.request.method == "POST" and response.url.rstrip("/").endswith("/api/reports"),
         timeout=15_000,
     ) as viewer_report_response_info:
-        viewer_report_button.evaluate("(button) => button.click()")
+        viewer_report_button.click(force=True)
     viewer_report_response = viewer_report_response_info.value
     if viewer_report_response.status != 201:
         raise AssertionError(f"Viewer department snapshot returned HTTP {viewer_report_response.status}")
