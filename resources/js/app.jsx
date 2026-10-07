@@ -678,12 +678,13 @@ function ReportingPage() {
     }, [remote.data, reportType, departmentCode, reviewId]);
 
     const generate = async () => {
-        if (!reportType) return;
+        const selectedReportType = reportType || remote.data?.catalog?.[0]?.type || '';
+        if (!selectedReportType) return;
         setGenerating(true);
         try {
-            const payload = { report_type: reportType, year: period.year, month: period.month };
-            if (reportType === 'department') payload.department_code = departmentCode;
-            if (reportType === 'management_review') payload.management_review_id = Number(reviewId);
+            const payload = { report_type: selectedReportType, year: period.year, month: period.month };
+            if (selectedReportType === 'department') payload.department_code = departmentCode;
+            if (selectedReportType === 'management_review') payload.management_review_id = Number(reviewId);
             const { data } = await http.post('/reports', payload);
             setSelected(data.report);
             notify('Snapshot laporan berhasil dibuat dan dikunci dengan SHA-256.');
