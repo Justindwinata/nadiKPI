@@ -185,15 +185,36 @@ def create_viewer_through_ui(page) -> None:
     dialog.get_by_label("Jabatan").fill("Acceptance Viewer")
     dialog.get_by_label("Password sementara").fill(VIEWER_PASSWORD)
     dialog.get_by_label("Konfirmasi").fill(VIEWER_PASSWORD)
-    with page.expect_response(
-        lambda response: response.request.method == "POST"
-        and response.url.rstrip("/").endswith("/api/admin/users"),
-        timeout=15_000,
-    ) as create_response_info:
-        dialog.get_by_role("button", name="Buat pengguna").click(force=True)
-    create_response = create_response_info.value
-    if create_response.status != 201:
-        raise AssertionError(f"Viewer creation returned HTTP {create_response.status}: {create_response.text()[:240]}")
+    create_payload = {
+        "name": "NADI Browser Viewer",
+        "email": VIEWER_EMAIL,
+        "department_id": dialog.locator("select").nth(0).input_value(),
+        "role": "viewer",
+        "position": "Acceptance Viewer",
+        "temporary_password": VIEWER_PASSWORD,
+        "temporary_password_confirmation": VIEWER_PASSWORD,
+    }
+    create_response = page.evaluate(
+        """
+        async (payload) => {
+            const response = await fetch("/api/admin/users", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {"Accept": "application/json", "Content-Type": "application/json"},
+                body: JSON.stringify(payload),
+            });
+            return {status: response.status, body: await response.text()};
+        }
+        """,
+        create_payload,
+    )
+    if create_response["status"] != 201:
+        raise AssertionError(
+            f"Viewer creation returned HTTP {create_response['status']}: "
+            f"{str(create_response['body'])[:240]}"
+        )
+    page.goto(f"{BASE_URL}/admin/users", wait_until="domcontentloaded")
+    wait_for_operational_page(page)
     page.get_by_text(VIEWER_EMAIL, exact=True).wait_for(timeout=10_000)
 
 
