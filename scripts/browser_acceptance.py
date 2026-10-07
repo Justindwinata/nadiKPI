@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -71,16 +72,81 @@ def wait_for_operational_page(page) -> None:
         raise AssertionError("Rendered page contains .error-state")
 
 
-def session_request(context, path: str):
-    url = f"{BASE_URL}{path}"
-    headers = {}
-    if HOST_HEADER and urlsplit(BASE_URL).hostname == HOST_HEADER:
-        parsed = urlsplit(BASE_URL)
-        url = urlunsplit((parsed.scheme, f"127.0.0.1:{parsed.port}" if parsed.port else "127.0.0.1", parsed.path, parsed.query, parsed.fragment))
-        cookies = context.cookies()
-        headers["Host"] = f"{HOST_HEADER}:{parsed.port}" if parsed.port else HOST_HEADER
-        headers["Cookie"] = "; ".join(f"{cookie['name']}={cookie['value']}" for cookie in cookies)
-    return context.request.get(url, headers=headers)
+def same_origin_request(page, path: str) -> dict[str, object]:
+    response = page.evaluate(
+        """
+        async (path) => {
+            const response = await fetch(path, {
+                credentials: "same-origin",
+                redirect: "follow",
+            });
+            const body = new Uint8Array(await response.arrayBuffer());
+            let binary = "";
+            for (let offset = 0; offset < body.length; offset += 0x8000) {
+                binary += String.fromCharCode(...body.subarray(offset, offset + 0x8000));
+            }
+            return {
+                status: response.status,
+                url: response.url,
+                headers: Object.fromEntries(response.headers.entries()),
+                body: btoa(binary),
+            };
+        }
+        """,
+        path,
+    )
+    response["body"] = base64.b64decode(response["body"])
+    return response
+
+
+def response_diagnostics(page, path: str, response: dict[str, object]) -> dict[str, object]:
+    diagnostics = page.evaluate(
+        """
+        async ({path, response}) => {
+            const manual = await fetch(path, {
+                credentials: "same-origin",
+                redirect: "manual",
+            });
+            const me = await fetch("/api/me", {
+                credentials: "same-origin",
+                redirect: "follow",
+            });
+            const meBody = await me.text();
+            return {
+                origin: window.location.origin,
+                cookie_names: document.cookie.split(";").map(item => item.trim().split("=")[0]).filter(Boolean),
+                manual_status: manual.status,
+                manual_location: manual.headers.get("location"),
+                me_status: me.status,
+                me_url: me.url,
+                me_content_type: me.headers.get("content-type"),
+                me_body_fragment: meBody.slice(0, 240),
+                response_body_fragment: atob(response.body).slice(0, 240),
+            };
+        }
+        """,
+        {"path": path, "response": {"body": base64.b64encode(response["body"]).decode("ascii")}},
+    )
+    content_type = str((response.get("headers") or {}).get("content-type", ""))
+    final_url = str(response.get("url", ""))
+    body_fragment = str(diagnostics.pop("response_body_fragment", ""))
+    classification = "unexpected-response"
+    if "text/html" in content_type:
+        classification = "login-or-spa-html"
+        if "/login" in final_url or "login" in body_fragment.lower():
+            classification = "login-redirect"
+        elif "<!doctype" in body_fragment.lower() or "<html" in body_fragment.lower():
+            classification = "spa-shell"
+    diagnostics.update({
+        "requested_url": f"{BASE_URL}{path}",
+        "final_response_url": final_url,
+        "status": response.get("status"),
+        "location": (response.get("headers") or {}).get("location"),
+        "content_type": content_type,
+        "html_fragment": body_fragment if "text/html" in content_type else "",
+        "classification": classification,
+    })
+    return diagnostics
 
 
 def assert_no_global_overflow(page, label: str) -> None:
@@ -174,14 +240,23 @@ def generate_report_and_verify_exports(page, context) -> dict[str, object]:
         link = preview.locator(f'a[href="/api/reports/{report_id}/export/{fmt}"]')
         if link.count() != 1:
             raise AssertionError(f"Missing {fmt.upper()} export link for generated snapshot")
-        export_response = session_request(context, f"/api/reports/{report_id}/export/{fmt}")
-        if export_response.status != 200:
-            raise AssertionError(f"{fmt.upper()} export returned HTTP {export_response.status}")
-        content_type = export_response.headers.get("content-type", "")
-        export_hash = export_response.headers.get("x-nadi-report-hash", "")
-        body = export_response.body()
+        export_path = f"/api/reports/{report_id}/export/{fmt}"
+        export_response = same_origin_request(page, export_path)
+        status = int(export_response["status"])
+        headers = export_response["headers"]
+        body = export_response["body"]
+        if status != 200:
+            raise AssertionError(
+                f"{fmt.upper()} export returned HTTP {status}; "
+                f"diagnostics={response_diagnostics(page, export_path, export_response)}"
+            )
+        content_type = headers.get("content-type", "")
+        export_hash = headers.get("x-nadi-report-hash", "")
         if expected_type not in content_type:
-            raise AssertionError(f"{fmt.upper()} export content type mismatch: {content_type!r}")
+            raise AssertionError(
+                f"{fmt.upper()} export content type mismatch: {content_type!r}; "
+                f"diagnostics={response_diagnostics(page, export_path, export_response)}"
+            )
         if export_hash != content_hash:
             raise AssertionError(f"{fmt.upper()} export report hash mismatch")
         if len(body) < 2:
@@ -228,15 +303,18 @@ def verify_viewer_boundary(browser, extra_headers, report_id: int) -> dict[str, 
     viewer_page.goto(f"{BASE_URL}/finance", wait_until="domcontentloaded")
     viewer_page.wait_for_url("**/dashboard", timeout=10_000)
 
-    admin_api = session_request(viewer_context, "/api/admin/users")
-    if admin_api.status != 403:
-        raise AssertionError(f"Viewer admin API boundary expected 403, got {admin_api.status}")
-    report_api = session_request(viewer_context, f"/api/reports/{report_id}")
-    if report_api.status != 403:
-        raise AssertionError(f"Viewer object-level report boundary expected 403, got {report_api.status}")
-    export_api = session_request(viewer_context, f"/api/reports/{report_id}/export/zip")
-    if export_api.status != 403:
-        raise AssertionError(f"Viewer report export boundary expected 403, got {export_api.status}")
+    admin_path = "/api/admin/users"
+    admin_api = same_origin_request(viewer_page, admin_path)
+    if admin_api["status"] != 403:
+        raise AssertionError(f"Viewer admin API boundary expected 403, got {admin_api['status']}")
+    report_path = f"/api/reports/{report_id}"
+    report_api = same_origin_request(viewer_page, report_path)
+    if report_api["status"] != 403:
+        raise AssertionError(f"Viewer object-level report boundary expected 403, got {report_api['status']}")
+    export_path = f"/api/reports/{report_id}/export/zip"
+    export_api = same_origin_request(viewer_page, export_path)
+    if export_api["status"] != 403:
+        raise AssertionError(f"Viewer report export boundary expected 403, got {export_api['status']}")
 
     viewer_page.goto(f"{BASE_URL}/reports", wait_until="domcontentloaded")
     wait_for_operational_page(viewer_page)
@@ -266,20 +344,21 @@ def verify_viewer_boundary(browser, extra_headers, report_id: int) -> dict[str, 
     viewer_page.screenshot(path=str(ARTIFACT_DIR / "viewer-report.png"), full_page=True)
     if viewer_preview.locator(".report-export-actions a").count() != 0 or viewer_preview.get_by_role("button", name="Preview / Print PDF").count() != 0:
         raise AssertionError("Viewer unexpectedly has report export controls")
-    viewer_export_api = session_request(viewer_context, f"/api/reports/{viewer_report_id}/export/zip")
-    if viewer_export_api.status != 403:
-        raise AssertionError(f"Viewer own-report export boundary expected 403, got {viewer_export_api.status}")
+    viewer_export_path = f"/api/reports/{viewer_report_id}/export/zip"
+    viewer_export_api = same_origin_request(viewer_page, viewer_export_path)
+    if viewer_export_api["status"] != 403:
+        raise AssertionError(f"Viewer own-report export boundary expected 403, got {viewer_export_api['status']}")
     transport = assert_notification_center(viewer_page)
     viewer_context.close()
     return {
         "forced_password_flow": "pass",
         "allowed_navigation": allowed_nav,
         "restricted_navigation_hidden": restricted_nav,
-        "admin_api_status": admin_api.status,
-        "executive_report_status": report_api.status,
-        "executive_export_status": export_api.status,
+        "admin_api_status": admin_api["status"],
+        "executive_report_status": report_api["status"],
+        "executive_export_status": export_api["status"],
         "viewer_report_id": viewer_report_id,
-        "viewer_export_status": viewer_export_api.status,
+        "viewer_export_status": viewer_export_api["status"],
         "notification_transport": transport,
     }
 
