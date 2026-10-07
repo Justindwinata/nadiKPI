@@ -257,7 +257,9 @@ def main() -> int:
         "functional_scenarios": {},
     }
 
-    extra_headers = {"Host": HOST_HEADER} if HOST_HEADER else None
+    # Chromium rejects Host as a manually supplied navigation header. Host and
+    # forwarded-proxy behavior are covered by the HTTP acceptance phase.
+    extra_headers = None
 
     with sync_playwright() as pw:
         launch_kwargs = {"headless": True}
