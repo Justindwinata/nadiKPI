@@ -521,6 +521,7 @@ def main() -> int:
             forced_page.get_by_label("Kata sandi baru").fill(FORCED_NEW_PASSWORD)
             forced_page.get_by_label("Konfirmasi kata sandi").fill(FORCED_NEW_PASSWORD)
             forced_page.get_by_role("button", name="Perbarui kata sandi").click()
+            forced_page.wait_for_url("**/dashboard", timeout=15_000)
             forced_page.wait_for_selector("#main-content", state="visible", timeout=15_000)
             evidence["forced_password_flow"] = "pass"
             forced_context.close()
