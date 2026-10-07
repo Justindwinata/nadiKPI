@@ -114,11 +114,13 @@ def create_viewer_through_ui(page) -> None:
 def generate_report_and_verify_exports(page, context) -> dict[str, object]:
     page.goto(f"{BASE_URL}/reports", wait_until="domcontentloaded")
     wait_for_operational_page(page)
+    create_button = page.get_by_role("button", name="Buat snapshot")
+    create_button.wait_for(state="visible", timeout=15_000)
     with page.expect_response(
         lambda response: response.request.method == "POST" and response.url.rstrip("/").endswith("/api/reports"),
         timeout=15_000,
     ) as response_info:
-        page.get_by_role("button", name="Buat snapshot").click()
+        create_button.click()
     response = response_info.value
     if response.status != 201:
         raise AssertionError(f"Report snapshot creation returned HTTP {response.status}")
