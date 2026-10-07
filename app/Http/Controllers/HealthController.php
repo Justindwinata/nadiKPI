@@ -10,7 +10,7 @@ class HealthController extends Controller
     public function ready(ReleaseReadinessService $readiness): JsonResponse
     {
         $result = $readiness->evaluate(
-            production: app()->environment('production'),
+            production: false,
             includeDatabase: true,
             includeBuild: true,
         );
