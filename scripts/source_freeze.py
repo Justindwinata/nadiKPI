@@ -188,6 +188,16 @@ def verify_source(repo: Path) -> dict[str, Any]:
     policy, policy_sha = load_policy(repo)
     listed = source_manifest_paths(repo)
     actual: set[str] = set()
+    runtime_prefixes = (
+        "bootstrap/cache/",
+        "storage/framework/cache/data/",
+        "storage/framework/sessions/",
+        "storage/framework/views/",
+    )
+    runtime_files = {
+        ".phpunit.result.cache",
+        "storage/logs/laravel.log",
+    }
     for path in repo.rglob("*"):
         if not path.is_file() or path.is_symlink():
             continue
@@ -200,6 +210,8 @@ def verify_source(repo: Path) -> dict[str, Any]:
         if len(parts) >= 2 and parts[0:2] == ("bootstrap", "cache") and rel != "bootstrap/cache/.gitignore":
             continue
         if parts and parts[0] in {"dist-gate-a", "dist-gate-b", "dist-final"}:
+            continue
+        if rel in runtime_files or rel.startswith(runtime_prefixes) or rel.startswith("public/build/"):
             continue
         actual.add(rel)
     if actual != listed:
