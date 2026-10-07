@@ -7,6 +7,7 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 try:
     from playwright.sync_api import Error as PlaywrightError
@@ -30,6 +31,10 @@ VIEWER_PASSWORD = os.getenv("NADI_BROWSER_VIEWER_PASSWORD", "")
 VIEWER_NEW_PASSWORD = os.getenv("NADI_BROWSER_VIEWER_NEW_PASSWORD", "")
 ARTIFACT_DIR = Path(os.getenv("NADI_BROWSER_ARTIFACT_DIR", "artifacts/browser-acceptance"))
 BROWSER_EXECUTABLE_PATH = os.getenv("NADI_BROWSER_EXECUTABLE_PATH", "").strip()
+
+if HOST_HEADER and urlsplit(BASE_URL).hostname in {"127.0.0.1", "localhost"}:
+    parsed_base_url = urlsplit(BASE_URL)
+    BASE_URL = urlunsplit((parsed_base_url.scheme, HOST_HEADER + (f":{parsed_base_url.port}" if parsed_base_url.port else ""), parsed_base_url.path, parsed_base_url.query, parsed_base_url.fragment)).rstrip("/")
 
 ROUTES = [
     "/dashboard",
@@ -263,6 +268,8 @@ def main() -> int:
 
     with sync_playwright() as pw:
         launch_kwargs = {"headless": True}
+        if HOST_HEADER and BASE_URL.startswith(("http://"+HOST_HEADER, "https://"+HOST_HEADER)):
+            launch_kwargs["args"] = [f"--host-resolver-rules=MAP {HOST_HEADER} 127.0.0.1"]
         if BROWSER_EXECUTABLE_PATH:
             executable = Path(BROWSER_EXECUTABLE_PATH)
             if not executable.is_file() or not os.access(executable, os.X_OK):
