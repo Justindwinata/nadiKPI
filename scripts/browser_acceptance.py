@@ -120,6 +120,11 @@ def generate_report_and_verify_exports(page, context) -> dict[str, object]:
     report_select.wait_for(state="visible", timeout=15_000)
     report_select.select_option(index=0)
     page.wait_for_function(
+        "(select) => select.value !== ''",
+        report_select,
+        timeout=15_000,
+    )
+    page.wait_for_function(
         "() => [...document.querySelectorAll('button')].some(button => button.textContent.includes('Buat snapshot') && !button.disabled)",
         timeout=15_000,
     )
@@ -128,7 +133,7 @@ def generate_report_and_verify_exports(page, context) -> dict[str, object]:
         lambda response: response.request.method == "POST" and response.url.rstrip("/").endswith("/api/reports"),
         timeout=15_000,
     ) as response_info:
-        create_button.click(force=True)
+        create_button.evaluate("(button) => button.click()")
     response = response_info.value
     if response.status != 201:
         raise AssertionError(f"Report snapshot creation returned HTTP {response.status}")
