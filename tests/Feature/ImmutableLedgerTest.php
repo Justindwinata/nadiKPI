@@ -2,11 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\AuditLog;
-use App\Models\RiskSignal;
-use App\Models\ManagementReviewItem;
-use App\Models\ManagementReview;
 use App\Models\ActionItem;
+use App\Models\AuditLog;
 use App\Models\AuthenticationEvent;
 use App\Models\CertificateIssuance;
 use App\Models\CertificationAppeal;
@@ -15,7 +12,10 @@ use App\Models\ComplianceFinding;
 use App\Models\DataImportBatch;
 use App\Models\DataSource;
 use App\Models\FinancialRecord;
+use App\Models\ManagementReview;
+use App\Models\ManagementReviewItem;
 use App\Models\ReportSnapshot;
+use App\Models\RiskSignal;
 use App\Models\User;
 use Database\Seeders\PrototypeSeeder;
 use Illuminate\Database\QueryException;
@@ -72,7 +72,6 @@ class ImmutableLedgerTest extends TestCase
         $batch->delete();
     }
 
-
     public function test_security_audit_ledgers_reject_eloquent_update_and_delete(): void
     {
         $user = User::query()->firstOrFail();
@@ -110,7 +109,6 @@ class ImmutableLedgerTest extends TestCase
             }
         }
     }
-
 
     public function test_data_import_batch_identity_is_immutable_but_lifecycle_fields_remain_mutable(): void
     {
@@ -171,7 +169,6 @@ class ImmutableLedgerTest extends TestCase
         $appealBatch->delete();
     }
 
-
     public function test_identity_and_decision_evidence_cannot_be_hard_deleted_through_eloquent(): void
     {
         $records = [
@@ -221,7 +218,14 @@ class ImmutableLedgerTest extends TestCase
             $this->assertTrue(true);
         }
 
-        $audit = AuditLog::query()->firstOrFail();
+        $audit = AuditLog::create([
+            'user_id' => User::query()->firstOrFail()->id,
+            'action' => 'immutable_mysql_test',
+            'entity_type' => User::class,
+            'entity_id' => User::query()->firstOrFail()->id,
+            'changes' => ['test' => true],
+            'ip_address' => '127.0.0.1',
+        ]);
         $authEvent = AuthenticationEvent::create([
             'user_id' => User::query()->firstOrFail()->id,
             'email' => 'immutable@demo.test',
