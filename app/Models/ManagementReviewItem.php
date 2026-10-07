@@ -13,6 +13,7 @@ class ManagementReviewItem extends Model
             throw new LogicException('Management review item evidence cannot be hard-deleted.');
         });
     }
+
     protected $guarded = [];
 
     protected function casts(): array
@@ -20,7 +21,18 @@ class ManagementReviewItem extends Model
         return ['due_date' => 'date'];
     }
 
-    public function review() { return $this->belongsTo(ManagementReview::class, 'management_review_id'); }
-    public function signal() { return $this->belongsTo(RiskSignal::class, 'risk_signal_id'); }
-    public function action() { return $this->belongsTo(ActionItem::class, 'action_item_id'); }
+    public function review()
+    {
+        return $this->belongsTo(ManagementReview::class, 'management_review_id');
+    }
+
+    public function signal()
+    {
+        return $this->belongsTo(RiskSignal::class, 'risk_signal_id');
+    }
+
+    public function action()
+    {
+        return $this->belongsTo(ActionItem::class, 'action_item_id');
+    }
 }

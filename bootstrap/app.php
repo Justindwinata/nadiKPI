@@ -1,11 +1,11 @@
 <?php
 
-use App\Http\Middleware\EnsureModuleAccess;
-use App\Http\Middleware\EnsurePermission;
-use App\Http\Middleware\EnsurePasswordChanged;
-use App\Http\Middleware\EnsureActiveUser;
-use App\Http\Middleware\AddSecurityHeaders;
 use App\Http\Controllers\HealthController;
+use App\Http\Middleware\AddSecurityHeaders;
+use App\Http\Middleware\EnsureActiveUser;
+use App\Http\Middleware\EnsureModuleAccess;
+use App\Http\Middleware\EnsurePasswordChanged;
+use App\Http\Middleware\EnsurePermission;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;

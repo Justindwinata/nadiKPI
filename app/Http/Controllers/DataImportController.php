@@ -11,8 +11,8 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -115,6 +115,7 @@ class DataImportController extends Controller
             $totalRows++;
             if (count($data) !== 4) {
                 $errors[] = "Baris {$rowNumber}: jumlah kolom harus empat.";
+
                 continue;
             }
 
@@ -132,6 +133,7 @@ class DataImportController extends Controller
             ]);
             if ($validator->fails()) {
                 $errors[] = "Baris {$rowNumber}: ".$validator->errors()->first();
+
                 continue;
             }
 
@@ -191,20 +193,24 @@ class DataImportController extends Controller
                     $kpi = $kpis->get($row['kpi_code']);
                     if (! $kpi) {
                         $attemptErrors[] = "Baris {$row['row_number']}: kode KPI tidak ditemukan atau sudah diarsipkan.";
+
                         continue;
                     }
                     if ($kpi->isSystemDerived()) {
                         $attemptErrors[] = "Baris {$row['row_number']}: KPI {$kpi->code} dihitung otomatis dari data operasional dan tidak menerima impor manual.";
+
                         continue;
                     }
 
                     $configuration = $kpi->configurationFor($row['period']);
                     if (($kpi->configurations->isNotEmpty() && ! $configuration) || ($configuration && ! $configuration->is_active)) {
                         $attemptErrors[] = "Baris {$row['row_number']}: KPI {$kpi->code} tidak aktif atau belum memiliki konfigurasi pada periode tersebut.";
+
                         continue;
                     }
                     if ($actor->role !== 'director' && $actor->department_id !== $kpi->department_id) {
                         $attemptErrors[] = "Baris {$row['row_number']} di luar hak akses.";
+
                         continue;
                     }
 

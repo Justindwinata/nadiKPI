@@ -4,10 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\ActionItem;
 use App\Models\AuditLog;
-use App\Models\CorrectiveAction;
-use App\Models\ComplianceFinding;
-use App\Models\CertificationBatch;
 use App\Models\CertificationAppeal;
+use App\Models\CertificationBatch;
+use App\Models\ComplianceFinding;
+use App\Models\CorrectiveAction;
 use App\Models\DataImportBatch;
 use App\Models\DataSource;
 use App\Models\Department;
@@ -66,7 +66,6 @@ class ReportingWorkflowTest extends TestCase
         $this->assertSame(64, strlen($snapshot->content_hash));
         $this->assertDatabaseHas('audit_logs', ['action' => 'generate_report_snapshot', 'entity_id' => $id]);
     }
-
 
     public function test_finance_report_provenance_manifest_does_not_leak_other_domain_imports(): void
     {
@@ -178,7 +177,6 @@ class ReportingWorkflowTest extends TestCase
         $this->actingAs($finance->fresh())->getJson('/api/reports')->assertOk();
         $this->actingAs($finance->fresh())->get("/api/reports/{$snapshotId}/export/json")->assertForbidden();
     }
-
 
     public function test_revoked_domain_permission_blocks_existing_snapshot_and_removes_it_from_history(): void
     {
@@ -344,7 +342,6 @@ class ReportingWorkflowTest extends TestCase
         $this->assertDatabaseHas('report_snapshots', ['id' => $id]);
     }
 
-
     public function test_governance_report_excludes_future_capa_and_redacts_future_closure_and_appeal_decision(): void
     {
         $director = User::where('email', 'pimpinan@demo.test')->firstOrFail();
@@ -507,6 +504,4 @@ class ReportingWorkflowTest extends TestCase
         $this->assertNull($itemRow['owner_name']);
         $this->assertNull($itemRow['due_date']);
     }
-
-
 }

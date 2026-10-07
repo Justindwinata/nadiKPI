@@ -13,6 +13,7 @@ class RiskSignal extends Model
             throw new LogicException('Risk signal evidence cannot be hard-deleted. Resolve or dismiss it through the lifecycle instead.');
         });
     }
+
     protected $guarded = [];
 
     protected function casts(): array
@@ -29,12 +30,43 @@ class RiskSignal extends Model
         ];
     }
 
-    public function department() { return $this->belongsTo(Department::class); }
-    public function kpi() { return $this->belongsTo(KpiDefinition::class, 'kpi_definition_id'); }
-    public function acknowledger() { return $this->belongsTo(User::class, 'acknowledged_by'); }
-    public function escalator() { return $this->belongsTo(User::class, 'escalated_by'); }
-    public function resolver() { return $this->belongsTo(User::class, 'resolved_by'); }
-    public function actions() { return $this->hasMany(ActionItem::class); }
-    public function reviewItems() { return $this->hasMany(ManagementReviewItem::class); }
-    public function notifications() { return $this->hasMany(UserNotification::class); }
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function kpi()
+    {
+        return $this->belongsTo(KpiDefinition::class, 'kpi_definition_id');
+    }
+
+    public function acknowledger()
+    {
+        return $this->belongsTo(User::class, 'acknowledged_by');
+    }
+
+    public function escalator()
+    {
+        return $this->belongsTo(User::class, 'escalated_by');
+    }
+
+    public function resolver()
+    {
+        return $this->belongsTo(User::class, 'resolved_by');
+    }
+
+    public function actions()
+    {
+        return $this->hasMany(ActionItem::class);
+    }
+
+    public function reviewItems()
+    {
+        return $this->hasMany(ManagementReviewItem::class);
+    }
+
+    public function notifications()
+    {
+        return $this->hasMany(UserNotification::class);
+    }
 }

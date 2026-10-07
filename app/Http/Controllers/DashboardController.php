@@ -40,6 +40,7 @@ class DashboardController extends Controller
                     ->get()
                     ->filter(function (KpiDefinition $kpi) {
                         $config = $kpi->configurationFor(now());
+
                         return $kpi->configurations->isEmpty() ? (bool) $kpi->is_active : (bool) ($config?->is_active ?? false);
                     })
                     ->values()

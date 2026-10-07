@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use LogicException;
-
 use Illuminate\Database\Eloquent\Model;
+use LogicException;
 
 class CertificationBatch extends Model
 {

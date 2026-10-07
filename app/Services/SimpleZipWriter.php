@@ -18,7 +18,9 @@ class SimpleZipWriter
 {
     /** @var array<int, array{name:string,data:string,crc:int,size:int,offset:int,time:int,date:int}> */
     private array $files = [];
+
     private string $body = '';
+
     private readonly DateTimeImmutable $timestamp;
 
     public function __construct(?DateTimeInterface $timestamp = null)
@@ -47,7 +49,7 @@ class SimpleZipWriter
         [$time, $date] = $this->dosDateTime();
 
         $this->body .= pack('VvvvvvVVVvv',
-            0x04034b50, 20, 0, 0, $time, $date, $crc, $size, $size, strlen($name), 0
+            0x04034B50, 20, 0, 0, $time, $date, $crc, $size, $size, strlen($name), 0
         ).$name.$data;
 
         $this->files[] = compact('name', 'data', 'crc', 'size', 'offset', 'time', 'date');
@@ -58,7 +60,7 @@ class SimpleZipWriter
         $central = '';
         foreach ($this->files as $file) {
             $central .= pack('VvvvvvvVVVvvvvvVV',
-                0x02014b50,
+                0x02014B50,
                 20,
                 20,
                 0,
@@ -83,7 +85,7 @@ class SimpleZipWriter
         $count = count($this->files);
 
         return $this->body.$central.pack('VvvvvVVv',
-            0x06054b50, 0, 0, $count, $count, $centralSize, $centralOffset, 0
+            0x06054B50, 0, 0, $count, $count, $centralSize, $centralOffset, 0
         );
     }
 

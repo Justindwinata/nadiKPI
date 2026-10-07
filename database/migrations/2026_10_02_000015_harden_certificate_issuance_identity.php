@@ -17,7 +17,7 @@ return new class extends Migration
             ->value('reference');
 
         if ($duplicate !== null) {
-            throw new \RuntimeException('Duplicate certificate issuance reference must be reconciled before migration: '.$duplicate);
+            throw new RuntimeException('Duplicate certificate issuance reference must be reconciled before migration: '.$duplicate);
         }
 
         Schema::table('certificate_issuances', function (Blueprint $table): void {

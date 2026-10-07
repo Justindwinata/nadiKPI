@@ -25,6 +25,7 @@ class ReleaseCheck extends Command
 
         if ($this->option('json')) {
             $this->line((string) json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
             return $result['ready'] ? self::SUCCESS : self::FAILURE;
         }
 

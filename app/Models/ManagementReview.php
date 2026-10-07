@@ -13,6 +13,7 @@ class ManagementReview extends Model
             throw new LogicException('Management review evidence cannot be hard-deleted. Close it through the lifecycle instead.');
         });
     }
+
     protected $guarded = [];
 
     protected function casts(): array
@@ -26,7 +27,18 @@ class ManagementReview extends Model
         ];
     }
 
-    public function items() { return $this->hasMany(ManagementReviewItem::class); }
-    public function creator() { return $this->belongsTo(User::class, 'created_by'); }
-    public function approver() { return $this->belongsTo(User::class, 'approved_by'); }
+    public function items()
+    {
+        return $this->hasMany(ManagementReviewItem::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
 }

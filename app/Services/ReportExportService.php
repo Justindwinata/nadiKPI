@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ReportSnapshot;
-use Illuminate\Support\Arr;
 
 class ReportExportService
 {
@@ -34,7 +33,9 @@ class ReportExportService
         if ($summary) {
             $rows[] = ['SUMMARY'];
             $rows[] = ['Section', 'Metric', 'Value'];
-            foreach ($summary as $row) $rows[] = $row;
+            foreach ($summary as $row) {
+                $rows[] = $row;
+            }
             $rows[] = [];
         }
 
@@ -75,17 +76,19 @@ class ReportExportService
         }
 
         if ($kpis) {
-            $html .= '<h2>KPI Snapshot</h2>'.$this->htmlTable($kpis, ['code','name','actual','target','warning_threshold','weight','status','owner_name'], $e);
+            $html .= '<h2>KPI Snapshot</h2>'.$this->htmlTable($kpis, ['code', 'name', 'actual', 'target', 'warning_threshold', 'weight', 'status', 'owner_name'], $e);
         }
 
         foreach ($tables as $name => $rows) {
-            if ($name === 'kpis' || ! $rows) continue;
+            if ($name === 'kpis' || ! $rows) {
+                continue;
+            }
             $html .= '<h2>'.$e($this->humanize($name)).'</h2>'.$this->htmlTable(array_slice($rows, 0, 100), null, $e);
         }
 
         $manifest = $snapshot->source_manifest ?? [];
         if (! empty($manifest['import_batches'])) {
-            $html .= '<h2>Provenance / Import Batches</h2>'.$this->htmlTable($manifest['import_batches'], ['reference','dataset_name','file_name','sha256','accepted_rows','rejected_rows','reconciliation_status'], $e);
+            $html .= '<h2>Provenance / Import Batches</h2>'.$this->htmlTable($manifest['import_batches'], ['reference', 'dataset_name', 'file_name', 'sha256', 'accepted_rows', 'rejected_rows', 'reconciliation_status'], $e);
         }
         $html .= '<footer>Snapshot immutable · Content hash: '.$e($snapshot->content_hash).'</footer></body></html>';
 
@@ -106,7 +109,9 @@ class ReportExportService
         ];
 
         foreach ($this->extractTables($snapshot->payload ?? []) as $name => $rows) {
-            if (! $rows) continue;
+            if (! $rows) {
+                continue;
+            }
             $files['tables/'.$this->safeName($name).'.csv'] = $this->tableCsv($rows);
         }
         ksort($files, SORT_STRING);
@@ -163,24 +168,32 @@ class ReportExportService
     {
         $rows = [];
         $walk = function ($value, string $path = '') use (&$walk, &$rows): void {
-            if (! is_array($value)) return;
+            if (! is_array($value)) {
+                return;
+            }
             foreach ($value as $key => $child) {
                 $childPath = trim($path.'.'.$key, '.');
                 if ($key === 'summary' && is_array($child)) {
                     foreach ($child as $metric => $metricValue) {
-                        if (is_scalar($metricValue) || $metricValue === null) $rows[] = [$path ?: 'report', $metric, $metricValue];
+                        if (is_scalar($metricValue) || $metricValue === null) {
+                            $rows[] = [$path ?: 'report', $metric, $metricValue];
+                        }
                     }
+
                     continue;
                 }
                 if (in_array($key, ['overview'], true) && is_array($child)) {
-                    foreach (['overall_score','overall_status','open_actions','overdue_actions'] as $metric) {
-                        if (array_key_exists($metric, $child)) $rows[] = [$childPath, $metric, $child[$metric]];
+                    foreach (['overall_score', 'overall_status', 'open_actions', 'overdue_actions'] as $metric) {
+                        if (array_key_exists($metric, $child)) {
+                            $rows[] = [$childPath, $metric, $child[$metric]];
+                        }
                     }
                 }
                 $walk($child, $childPath);
             }
         };
         $walk($payload['content'] ?? []);
+
         return $rows;
     }
 
@@ -188,27 +201,39 @@ class ReportExportService
     {
         $tables = [];
         $walk = function ($value) use (&$walk, &$tables): void {
-            if (! is_array($value)) return;
+            if (! is_array($value)) {
+                return;
+            }
             foreach ($value as $key => $child) {
                 if (in_array($key, self::TABLE_KEYS, true) && is_array($child) && array_is_list($child)) {
                     $normalized = array_values(array_filter(array_map(fn ($row) => is_array($row) ? $row : null, $child)));
-                    if ($normalized) $tables[$key] = array_merge($tables[$key] ?? [], $normalized);
+                    if ($normalized) {
+                        $tables[$key] = array_merge($tables[$key] ?? [], $normalized);
+                    }
                 }
                 $walk($child);
             }
         };
         $walk($payload);
+
         return $tables;
     }
 
     private function tableCsv(array $rows): string
     {
-        if (! $rows) return "No data\n";
+        if (! $rows) {
+            return "No data\n";
+        }
         $flat = array_map(fn ($row) => $this->flattenRow($row), $rows);
         $headers = [];
-        foreach ($flat as $row) $headers = array_values(array_unique(array_merge($headers, array_keys($row))));
+        foreach ($flat as $row) {
+            $headers = array_values(array_unique(array_merge($headers, array_keys($row))));
+        }
         $csvRows = [$headers];
-        foreach ($flat as $row) $csvRows[] = array_map(fn ($header) => $row[$header] ?? '', $headers);
+        foreach ($flat as $row) {
+            $csvRows[] = array_map(fn ($header) => $row[$header] ?? '', $headers);
+        }
+
         return $this->rowsToCsv($csvRows);
     }
 
@@ -216,9 +241,13 @@ class ReportExportService
     {
         $out = [];
         foreach ($row as $key => $value) {
-            if (is_scalar($value) || $value === null) $out[$key] = $value;
-            else $out[$key] = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if (is_scalar($value) || $value === null) {
+                $out[$key] = $value;
+            } else {
+                $out[$key] = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
         }
+
         return $out;
     }
 
@@ -226,38 +255,54 @@ class ReportExportService
     {
         $handle = fopen('php://temp', 'r+');
         fwrite($handle, "\xEF\xBB\xBF");
-        foreach ($rows as $row) fputcsv($handle, array_map(fn ($value) => $this->csvCell($value), $row));
+        foreach ($rows as $row) {
+            fputcsv($handle, array_map(fn ($value) => $this->csvCell($value), $row));
+        }
         rewind($handle);
         $csv = stream_get_contents($handle);
         fclose($handle);
+
         return $csv;
     }
 
     private function htmlTable(array $rows, ?array $preferred, callable $e): string
     {
-        if (! $rows) return '<p class="muted">Tidak ada data pada snapshot ini.</p>';
+        if (! $rows) {
+            return '<p class="muted">Tidak ada data pada snapshot ini.</p>';
+        }
         $flat = array_map(fn ($row) => $this->flattenRow($row), $rows);
         $headers = $preferred ?: array_slice(array_keys($flat[0]), 0, 9);
         $headers = array_values(array_filter($headers, fn ($header) => array_key_exists($header, $flat[0])));
-        if (! $headers) return '<p class="muted">Tidak ada kolom yang dapat ditampilkan.</p>';
+        if (! $headers) {
+            return '<p class="muted">Tidak ada kolom yang dapat ditampilkan.</p>';
+        }
         $html = '<table><thead><tr>'.implode('', array_map(fn ($h) => '<th>'.$e($this->humanize($h)).'</th>', $headers)).'</tr></thead><tbody>';
         foreach ($flat as $row) {
             $html .= '<tr>'.implode('', array_map(fn ($h) => '<td>'.$e($this->scalar($row[$h] ?? '')).'</td>', $headers)).'</tr>';
         }
+
         return $html.'</tbody></table>';
     }
 
     private function csvCell(mixed $value): string
     {
         $scalar = $this->scalar($value);
+
         return is_string($value) && preg_match('/^[=+\-@]/', $scalar) ? "'".$scalar : $scalar;
     }
 
     private function scalar(mixed $value): string
     {
-        if (is_bool($value)) return $value ? 'Ya' : 'Tidak';
-        if ($value === null) return '';
-        if (is_float($value)) return rtrim(rtrim(number_format($value, 3, '.', ''), '0'), '.');
+        if (is_bool($value)) {
+            return $value ? 'Ya' : 'Tidak';
+        }
+        if ($value === null) {
+            return '';
+        }
+        if (is_float($value)) {
+            return rtrim(rtrim(number_format($value, 3, '.', ''), '0'), '.');
+        }
+
         return (string) $value;
     }
 

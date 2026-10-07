@@ -15,7 +15,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class ReportController extends Controller
 {
@@ -67,14 +66,19 @@ class ReportController extends Controller
     public function show(Request $request, ReportSnapshot $report, ReportingService $reports): JsonResponse
     {
         $this->authorizeSnapshot($request, $report, $reports);
+
         return response()->json(['report' => $this->detail($report->load(['generator:id,name', 'department:id,code,name']))]);
     }
 
     public function export(Request $request, ReportSnapshot $report, string $format, ReportingService $reports, ReportExportService $exporter): Response
     {
         $this->authorizeSnapshot($request, $report, $reports);
-        if (! $request->user()->hasPermission('reports.export')) abort(403);
-        if (! in_array($format, ['json', 'csv', 'zip'], true)) abort(404);
+        if (! $request->user()->hasPermission('reports.export')) {
+            abort(403);
+        }
+        if (! in_array($format, ['json', 'csv', 'zip'], true)) {
+            abort(404);
+        }
 
         [$body, $contentType, $extension] = match ($format) {
             'json' => [$exporter->json($report), 'application/json; charset=UTF-8', 'json'],
@@ -106,7 +110,9 @@ class ReportController extends Controller
 
     private function authorizeSnapshot(Request $request, ReportSnapshot $report, ReportingService $reports): void
     {
-        if (! $reports->canViewSnapshot($request->user(), $report)) abort(403);
+        if (! $reports->canViewSnapshot($request->user(), $report)) {
+            abort(403);
+        }
     }
 
     private function summary(ReportSnapshot $snapshot): array

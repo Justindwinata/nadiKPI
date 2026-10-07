@@ -20,6 +20,7 @@ use App\Models\ItService;
 use App\Models\Tuk;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -346,6 +347,7 @@ class IntegrationOnboardingService
                         'published_entity_id' => $link->entity_id,
                     ]);
                     $skipped++;
+
                     continue;
                 }
 
@@ -459,8 +461,9 @@ class IntegrationOnboardingService
     {
         $entity = $link ? CertificationScheme::find($link->entity_id) : CertificationScheme::where('code', $data['code'])->first();
         $action = $entity ? 'update' : 'insert';
-        $entity ??= new CertificationScheme();
+        $entity ??= new CertificationScheme;
         $entity->fill(Arr::only($data, ['code', 'name', 'category', 'units_count', 'is_active', 'valid_until', 'evidence_reference']))->save();
+
         return [$entity, $action];
     }
 
@@ -468,8 +471,9 @@ class IntegrationOnboardingService
     {
         $entity = $link ? Tuk::find($link->entity_id) : Tuk::where('code', $data['code'])->first();
         $action = $entity ? 'update' : 'insert';
-        $entity ??= new Tuk();
+        $entity ??= new Tuk;
         $entity->fill(Arr::only($data, ['code', 'name', 'city', 'status', 'monthly_capacity', 'verification_valid_until', 'evidence_reference']))->save();
+
         return [$entity, $action];
     }
 
@@ -477,8 +481,9 @@ class IntegrationOnboardingService
     {
         $entity = $link ? Assessor::find($link->entity_id) : Assessor::where('registration_no', $data['registration_no'])->first();
         $action = $entity ? 'update' : 'insert';
-        $entity ??= new Assessor();
+        $entity ??= new Assessor;
         $entity->fill(Arr::only($data, ['registration_no', 'name', 'specialization', 'status', 'valid_until']))->save();
+
         return [$entity, $action];
     }
 
@@ -489,7 +494,7 @@ class IntegrationOnboardingService
         $assessor = empty($data['assessor_registration_no']) ? null : Assessor::where('registration_no', $data['assessor_registration_no'])->whereNull('archived_at')->whereIn('status', ['active', 'expiring'])->lockForUpdate()->firstOrFail();
         $entity = $link ? CertificationBatch::find($link->entity_id) : CertificationBatch::where('code', $data['code'])->first();
         $action = $entity ? 'update' : 'insert';
-        $entity ??= new CertificationBatch();
+        $entity ??= new CertificationBatch;
         $before = $entity->exists ? $entity->only([
             'status', 'passed', 'failed', 'pending', 'assessment_completed_at', 'decision_at',
             'certificate_due_at', 'completed_at', 'certificates_issued', 'issued_on_time',
@@ -634,6 +639,7 @@ class IntegrationOnboardingService
             ->where('issued_at', '<=', $batch->certificate_due_at)
             ->sum('issued_count');
         $batch->update(['certificates_issued' => $issued, 'issued_on_time' => $onTime]);
+
         return [$entity, 'insert'];
     }
 
@@ -661,6 +667,7 @@ class IntegrationOnboardingService
             'recorded_by' => $user->id,
         ]);
         $invoice->update(['revenue_record_id' => $revenue->id]);
+
         return [$invoice, 'insert'];
     }
 
@@ -688,6 +695,7 @@ class IntegrationOnboardingService
         ]);
         $remaining = max(0, $outstanding - (float) $data['amount']);
         $invoice->update(['status' => $remaining <= 0.005 ? 'paid' : 'partially_paid']);
+
         return [$entity, 'insert'];
     }
 
@@ -702,6 +710,7 @@ class IntegrationOnboardingService
             'source_type' => 'integration',
             'recorded_by' => $user->id,
         ]);
+
         return [$entity, 'insert'];
     }
 
@@ -709,12 +718,13 @@ class IntegrationOnboardingService
     {
         $entity = $link ? ItService::find($link->entity_id) : ItService::where('name', $data['name'])->first();
         $action = $entity ? 'update' : 'insert';
-        $entity ??= new ItService();
+        $entity ??= new ItService;
         $payload = Arr::only($data, ['name', 'owner', 'target_uptime', 'monitoring_started_at', 'status']);
         if ($action === 'insert' && empty($payload['monitoring_started_at'])) {
             $payload['monitoring_started_at'] = now();
         }
         $entity->fill($payload)->save();
+
         return [$entity, $action];
     }
 
@@ -723,7 +733,7 @@ class IntegrationOnboardingService
         $service = ItService::where('name', $data['service_name'])->whereNull('archived_at')->firstOrFail();
         $entity = $link ? ItIncident::find($link->entity_id) : ItIncident::where('reference', $data['reference'])->first();
         $action = $entity ? 'update' : 'insert';
-        $entity ??= new ItIncident();
+        $entity ??= new ItIncident;
         $before = $entity->exists ? $entity->only([
             'status', 'started_at', 'acknowledged_at', 'resolved_at', 'summary',
             'resolution_summary', 'root_cause', 'resolved_by',
@@ -788,6 +798,7 @@ class IntegrationOnboardingService
                 'resolution_summary', 'root_cause', 'resolved_by',
             ]),
         ]);
+
         return [$entity, $action];
     }
 
@@ -803,13 +814,15 @@ class IntegrationOnboardingService
             ]),
             'recorded_by' => $user->id,
         ]);
+
         return [$entity, 'insert'];
     }
 
     private function linkEntityExists(IntegrationRecordLink $link): bool
     {
         $class = $link->entity_type;
-        return class_exists($class) && is_subclass_of($class, \Illuminate\Database\Eloquent\Model::class)
+
+        return class_exists($class) && is_subclass_of($class, Model::class)
             && $class::query()->whereKey($link->entity_id)->exists();
     }
 
@@ -995,9 +1008,15 @@ class IntegrationOnboardingService
     {
         $errors = [];
         if ($type === 'certification_batches') {
-            if (! CertificationScheme::where('code', $payload['scheme_code'] ?? null)->whereNull('archived_at')->where('is_active', true)->exists()) $errors[] = 'scheme_code tidak ditemukan di master skema.';
-            if (! Tuk::where('code', $payload['tuk_code'] ?? null)->whereNull('archived_at')->where('status', 'active')->exists()) $errors[] = 'tuk_code tidak ditemukan di master TUK.';
-            if (! empty($payload['assessor_registration_no']) && ! Assessor::where('registration_no', $payload['assessor_registration_no'])->whereNull('archived_at')->whereIn('status', ['active', 'expiring'])->exists()) $errors[] = 'assessor_registration_no tidak ditemukan.';
+            if (! CertificationScheme::where('code', $payload['scheme_code'] ?? null)->whereNull('archived_at')->where('is_active', true)->exists()) {
+                $errors[] = 'scheme_code tidak ditemukan di master skema.';
+            }
+            if (! Tuk::where('code', $payload['tuk_code'] ?? null)->whereNull('archived_at')->where('status', 'active')->exists()) {
+                $errors[] = 'tuk_code tidak ditemukan di master TUK.';
+            }
+            if (! empty($payload['assessor_registration_no']) && ! Assessor::where('registration_no', $payload['assessor_registration_no'])->whereNull('archived_at')->whereIn('status', ['active', 'expiring'])->exists()) {
+                $errors[] = 'assessor_registration_no tidak ditemukan.';
+            }
         }
         if ($type === 'certificate_issuances' && ! CertificationBatch::where('code', $payload['batch_code'] ?? null)->exists()) {
             $errors[] = 'batch_code tidak ditemukan.';
@@ -1008,6 +1027,7 @@ class IntegrationOnboardingService
         if ($type === 'it_incidents' && ! ItService::where('name', $payload['service_name'] ?? null)->whereNull('archived_at')->exists()) {
             $errors[] = 'service_name tidak ditemukan di master layanan IT.';
         }
+
         return $errors;
     }
 
@@ -1019,7 +1039,9 @@ class IntegrationOnboardingService
             $value = $sourceHeader ? ($raw[$sourceHeader] ?? null) : ($defaults[$name] ?? null);
             if (is_string($value)) {
                 $value = trim($value);
-                if ($value === '') $value = null;
+                if ($value === '') {
+                    $value = null;
+                }
             }
             if (($field['cast'] ?? null) === 'boolean' && $value !== null) {
                 $value = in_array(Str::lower((string) $value), ['1', 'true', 'yes', 'y', 'ya', 'aktif', 'active'], true) ? 1 : 0;
@@ -1029,6 +1051,7 @@ class IntegrationOnboardingService
         if ($definition['type'] === 'certification_batches' && $normalized['pending'] === null && $normalized['total_assesi'] !== null) {
             $normalized['pending'] = max(0, (int) $normalized['total_assesi'] - (int) ($normalized['passed'] ?? 0) - (int) ($normalized['failed'] ?? 0));
         }
+
         return $normalized;
     }
 
@@ -1042,6 +1065,7 @@ class IntegrationOnboardingService
         foreach (array_keys($definition['fields']) as $field) {
             $mapping[$field] = $normalizedHeaders[Str::lower($field)] ?? null;
         }
+
         return $mapping;
     }
 
@@ -1072,6 +1096,7 @@ class IntegrationOnboardingService
         }
         $headers = array_map(function ($header) {
             $header = trim((string) $header);
+
             return preg_replace('/^\xEF\xBB\xBF/', '', $header);
         }, $headers);
         if (count(array_unique($headers)) !== count($headers)) {
@@ -1081,7 +1106,9 @@ class IntegrationOnboardingService
 
         $rows = [];
         while (($values = fgetcsv($handle)) !== false) {
-            if ($values === [null] || $values === []) continue;
+            if ($values === [null] || $values === []) {
+                continue;
+            }
             if (count($values) !== count($headers)) {
                 $values = array_pad(array_slice($values, 0, count($headers)), count($headers), null);
             }
@@ -1095,12 +1122,14 @@ class IntegrationOnboardingService
         if (! $rows) {
             throw ValidationException::withMessages(['file' => 'CSV tidak memiliki baris data.']);
         }
+
         return [$headers, $rows];
     }
 
     private function rowHash(array $payload): string
     {
         ksort($payload);
+
         return hash('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 

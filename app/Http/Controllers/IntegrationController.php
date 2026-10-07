@@ -116,6 +116,7 @@ class IntegrationController extends Controller
     public function show(Request $request, DataImportBatch $batch, IntegrationOnboardingService $service): JsonResponse
     {
         $this->authorizeBatchView($request, $service, $batch);
+
         return response()->json(['batch' => $this->batchPayload($batch->load(['source', 'creator:id,name', 'publisher:id,name', 'stagingRows']))]);
     }
 
@@ -145,6 +146,7 @@ class IntegrationController extends Controller
                 'changes' => ['reference' => $updated->reference, 'mapping' => $data['column_mapping']],
                 'ip_address' => $request->ip(),
             ]);
+
             return $updated;
         });
 
@@ -156,6 +158,7 @@ class IntegrationController extends Controller
         $this->authorizeBatch($request, $service, $batch);
         $data = $request->validate(['allow_partial' => ['sometimes', 'boolean']]);
         $batch = $service->publish($batch, $request->user(), (bool) ($data['allow_partial'] ?? false));
+
         return response()->json(['batch' => $this->batchPayload($batch)]);
     }
 
@@ -186,6 +189,7 @@ class IntegrationController extends Controller
                 'changes' => ['name' => $profile->name, 'dataset_type' => $profile->dataset_type, 'data_source_id' => $profile->data_source_id],
                 'ip_address' => $request->ip(),
             ]);
+
             return $profile;
         });
 
@@ -215,6 +219,7 @@ class IntegrationController extends Controller
                 'changes' => ['before' => $before, 'after' => $locked->fresh()->only(array_keys($before))],
                 'ip_address' => $request->ip(),
             ]);
+
             return $locked->fresh('source:id,code,name');
         });
 
@@ -256,12 +261,17 @@ class IntegrationController extends Controller
 
     private function jsonArray(mixed $value, string $field): ?array
     {
-        if ($value === null || $value === '') return null;
-        if (is_array($value)) return $value;
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_array($value)) {
+            return $value;
+        }
         $decoded = json_decode((string) $value, true);
         if (! is_array($decoded)) {
             throw ValidationException::withMessages([$field => 'Harus berupa object/array JSON yang valid.']);
         }
+
         return $decoded;
     }
 

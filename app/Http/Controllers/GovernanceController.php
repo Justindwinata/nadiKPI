@@ -110,6 +110,7 @@ class GovernanceController extends Controller
         $finding = DB::transaction(function () use ($data, $request) {
             $finding = ComplianceFinding::create($data + ['status' => 'open', 'created_by' => $request->user()->id]);
             $this->audit($request, 'create_finding', $finding, $data);
+
             return $finding;
         });
 
@@ -221,6 +222,7 @@ class GovernanceController extends Controller
         $appeal = DB::transaction(function () use ($request, $data): CertificationAppeal {
             $appeal = CertificationAppeal::create($data + ['status' => 'received', 'created_by' => $request->user()->id]);
             $this->audit($request, 'create_appeal', $appeal, $data);
+
             return $appeal;
         });
 
@@ -289,6 +291,7 @@ class GovernanceController extends Controller
         $obligation = DB::transaction(function () use ($request, $data): ComplianceObligation {
             $obligation = ComplianceObligation::create($data + ['created_by' => $request->user()->id]);
             $this->audit($request, 'create_obligation', $obligation, $data);
+
             return $obligation;
         });
 
@@ -310,6 +313,7 @@ class GovernanceController extends Controller
         $source = DB::transaction(function () use ($request, $data): DataSource {
             $source = DataSource::create($data + ['is_active' => true]);
             $this->audit($request, 'create_data_source', $source, $data);
+
             return $source;
         });
 
@@ -338,6 +342,7 @@ class GovernanceController extends Controller
             $before = $locked->only(['reconciliation_status', 'notes']);
             $locked->update($data);
             $this->audit($request, 'reconcile_import', $locked, ['before' => $before, 'after' => $locked->fresh()->only(array_keys($before))]);
+
             return $locked->fresh('source');
         });
 

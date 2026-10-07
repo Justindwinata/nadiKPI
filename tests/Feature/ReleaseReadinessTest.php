@@ -109,5 +109,4 @@ class ReleaseReadinessTest extends TestCase
         $this->assertSame('fail', $checks['cache_database']['status']);
         $this->assertSame('fail', $checks['queue_database']['status']);
     }
-
 }

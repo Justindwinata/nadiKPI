@@ -61,6 +61,7 @@ class NotificationMonitoringService
                 'data' => ['rule_code' => $signal->rule_code, 'source_reference' => $signal->source_reference],
             ]);
         }
+
         return $count;
     }
 
@@ -79,6 +80,7 @@ class NotificationMonitoringService
                 'data' => ['escalation_level' => $signal->escalation_level, 'rule_code' => $signal->rule_code],
             ]);
         }
+
         return $count;
     }
 
@@ -161,7 +163,9 @@ class NotificationMonitoringService
 
             $ageMinutes = $signal->detected_at?->diffInMinutes($asOf, false) ?? 0;
             $desiredLevel = $ageMinutes >= $level2Minutes ? 2 : ($ageMinutes >= $level1Minutes ? 1 : 0);
-            if ($desiredLevel <= (int) $signal->escalation_level) continue;
+            if ($desiredLevel <= (int) $signal->escalation_level) {
+                continue;
+            }
 
             $signal->update([
                 'escalation_level' => $desiredLevel,
@@ -211,9 +215,16 @@ class NotificationMonitoringService
     {
         return User::query()->where('is_active', true)->with(['department', 'permissionOverrides'])->get()
             ->filter(function (User $user) use ($departmentId, $includeCompanyOversight): bool {
-                if (! $user->hasPermission('decisions.view')) return false;
-                if ($user->role === 'director') return true;
-                if ($user->department?->code === 'quality') return $includeCompanyOversight || $user->role === 'department_head';
+                if (! $user->hasPermission('decisions.view')) {
+                    return false;
+                }
+                if ($user->role === 'director') {
+                    return true;
+                }
+                if ($user->department?->code === 'quality') {
+                    return $includeCompanyOversight || $user->role === 'department_head';
+                }
+
                 return $departmentId !== null && $user->department_id === $departmentId;
             })->values();
     }
@@ -221,6 +232,7 @@ class NotificationMonitoringService
     private function purgeOldNotifications(CarbonInterface $asOf): int
     {
         $days = max(30, (int) config('nadi.monitoring.notification_retention_days', 180));
+
         return UserNotification::query()
             ->whereNotNull('read_at')
             ->where('created_at', '<', $asOf->copy()->subDays($days))

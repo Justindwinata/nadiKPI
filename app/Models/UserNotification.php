@@ -17,8 +17,23 @@ class UserNotification extends Model
         ];
     }
 
-    public function user() { return $this->belongsTo(User::class); }
-    public function riskSignal() { return $this->belongsTo(RiskSignal::class); }
-    public function actionItem() { return $this->belongsTo(ActionItem::class); }
-    public function managementReview() { return $this->belongsTo(ManagementReview::class); }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function riskSignal()
+    {
+        return $this->belongsTo(RiskSignal::class);
+    }
+
+    public function actionItem()
+    {
+        return $this->belongsTo(ActionItem::class);
+    }
+
+    public function managementReview()
+    {
+        return $this->belongsTo(ManagementReview::class);
+    }
 }

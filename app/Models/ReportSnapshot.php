@@ -32,7 +32,18 @@ class ReportSnapshot extends Model
         ];
     }
 
-    public function department() { return $this->belongsTo(Department::class); }
-    public function managementReview() { return $this->belongsTo(ManagementReview::class); }
-    public function generator() { return $this->belongsTo(User::class, 'generated_by'); }
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function managementReview()
+    {
+        return $this->belongsTo(ManagementReview::class);
+    }
+
+    public function generator()
+    {
+        return $this->belongsTo(User::class, 'generated_by');
+    }
 }

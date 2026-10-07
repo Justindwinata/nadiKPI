@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\CertificateIssuance;
 use App\Models\CertificationBatch;
 use App\Models\ComplianceFinding;
 use App\Models\ComplianceObligation;
@@ -149,8 +148,11 @@ class RiskSignalService
         return FinanceInvoice::query()->with('payments')->whereNot('status', 'void')->whereDate('due_on', '<', $asOf)->get()->map(function ($invoice) use ($departments, $asOf) {
             $paid = $invoice->payments->whereNull('reversed_at')->sum('amount');
             $outstanding = max(0, (float) $invoice->amount - (float) $paid);
-            if ($outstanding <= 0.005) return null;
+            if ($outstanding <= 0.005) {
+                return null;
+            }
             $days = $invoice->due_on->diffInDays($asOf);
+
             return [
                 'fingerprint' => 'invoice:'.$invoice->id.':overdue',
                 'rule_code' => 'RECEIVABLE_OVERDUE',
@@ -173,7 +175,10 @@ class RiskSignalService
         return CertificationBatch::query()->with('issuances')->whereNotNull('certificate_due_at')->where('certificate_due_at', '<', $asOf)->get()->map(function ($batch) use ($departments, $asOf) {
             $issued = $batch->issuances->sum('issued_count');
             $backlog = max(0, (int) $batch->passed - (int) $issued);
-            if ($backlog < 1) return null;
+            if ($backlog < 1) {
+                return null;
+            }
+
             return [
                 'fingerprint' => 'cert-batch:'.$batch->id.':backlog',
                 'rule_code' => 'CERTIFICATE_BACKLOG',
@@ -212,9 +217,11 @@ class RiskSignalService
     private function obligationCandidates(CarbonInterface $asOf, Collection $departments): Collection
     {
         $limit = $asOf->copy()->addDays(90);
+
         return ComplianceObligation::query()->where('status', 'active')->whereNotNull('valid_until')->whereDate('valid_until', '<=', $limit)->get()->map(function ($obligation) use ($asOf, $departments) {
             $expired = $obligation->valid_until->lt($asOf);
             $days = $expired ? 0 : $asOf->diffInDays($obligation->valid_until);
+
             return [
                 'fingerprint' => 'obligation:'.$obligation->id.':expiry',
                 'rule_code' => 'OBLIGATION_EXPIRY',

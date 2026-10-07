@@ -23,6 +23,7 @@ class CreateAdminUser extends Command
         $email = mb_strtolower(trim((string) $this->argument('email')));
         if (User::query()->where('email', $email)->exists()) {
             $this->error('Email sudah digunakan.');
+
             return self::FAILURE;
         }
 
@@ -42,6 +43,7 @@ class CreateAdminUser extends Command
             foreach ($validator->errors()->all() as $error) {
                 $this->error($error);
             }
+
             return self::FAILURE;
         }
 
@@ -64,8 +66,9 @@ class CreateAdminUser extends Command
             'password_changed_at' => $forcePasswordChange ? null : now(),
         ]);
 
-        $suffix = $forcePasswordChange ? " Password ditandai sementara dan wajib diganti." : "";
+        $suffix = $forcePasswordChange ? ' Password ditandai sementara dan wajib diganti.' : '';
         $this->info("Administrator {$user->email} berhasil dibuat.{$suffix}");
+
         return self::SUCCESS;
     }
 }

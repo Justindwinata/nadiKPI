@@ -24,6 +24,7 @@ class User extends Authenticatable
             throw new LogicException('User identities cannot be hard-deleted. Deactivate the account instead.');
         });
     }
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 

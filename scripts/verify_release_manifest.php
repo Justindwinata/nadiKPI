@@ -32,6 +32,7 @@ if ($expectedCount !== count($manifest['files'])) {
 
 $normalize = static function (string $path): string {
     $path = str_replace('\\', '/', $path);
+
     return str_starts_with($path, './') ? substr($path, 2) : $path;
 };
 $allowedRuntimeExtra = static function (string $relative) use ($normalize): bool {
@@ -61,6 +62,7 @@ $failures = [];
 foreach ($manifest['files'] as $index => $entry) {
     if (! is_array($entry)) {
         $failures[] = "entry {$index}: invalid entry";
+
         continue;
     }
 
@@ -74,37 +76,44 @@ foreach ($manifest['files'] as $index => $entry) {
         || preg_match('/^[A-Za-z]:\//', $normalized)
         || in_array('..', explode('/', $normalized), true)) {
         $failures[] = "entry {$index}: unsafe path";
+
         continue;
     }
 
     if (isset($seen[$normalized])) {
         $failures[] = "duplicate path: {$normalized}";
+
         continue;
     }
     $seen[$normalized] = true;
 
     if (! preg_match('/^[a-f0-9]{64}$/', $expectedHash)) {
         $failures[] = "invalid sha256: {$normalized}";
+
         continue;
     }
     if (! is_int($expectedBytes) && ! ctype_digit((string) $expectedBytes)) {
         $failures[] = "invalid byte count: {$normalized}";
+
         continue;
     }
 
     $path = $root.'/'.$normalized;
     if (is_link($path)) {
         $failures[] = "symlink not allowed: {$normalized}";
+
         continue;
     }
     if (! is_file($path)) {
         $failures[] = "missing file: {$normalized}";
+
         continue;
     }
 
     $actualBytes = filesize($path);
     if ($actualBytes !== (int) $expectedBytes) {
         $failures[] = "size mismatch: {$normalized}";
+
         continue;
     }
 
@@ -126,6 +135,7 @@ foreach ($iterator as $item) {
 
     if ($item->isLink()) {
         $failures[] = "unexpected symlink: {$relative}";
+
         continue;
     }
     if (! $item->isFile()) {

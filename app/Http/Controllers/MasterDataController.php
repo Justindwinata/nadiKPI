@@ -78,7 +78,6 @@ class MasterDataController extends Controller
         ], 201);
     }
 
-
     public function update(UpdateMasterDataRequest $request, string $type, int $id): JsonResponse
     {
         $modelClass = $this->modelClass($type);
@@ -100,6 +99,7 @@ class MasterDataController extends Controller
                 'changes' => ['before' => $before, 'after' => $record->fresh()->toArray(), 'reason' => $reason],
                 'ip_address' => $request->ip(),
             ]);
+
             return $record->fresh();
         });
 
@@ -138,6 +138,7 @@ class MasterDataController extends Controller
                 'changes' => ['before' => $before, 'after' => $record->fresh()->toArray(), 'reason' => $data['reason']],
                 'ip_address' => $request->ip(),
             ]);
+
             return $record->fresh();
         });
 
@@ -171,6 +172,7 @@ class MasterDataController extends Controller
                 'changes' => ['before' => $before, 'after' => $record->fresh()->toArray(), 'reason' => $data['reason']],
                 'ip_address' => $request->ip(),
             ]);
+
             return $record->fresh();
         });
 

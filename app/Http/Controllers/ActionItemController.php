@@ -19,6 +19,7 @@ class ActionItemController extends Controller
         $action = DB::transaction(function () use ($data, $request): ActionItem {
             $action = ActionItem::create($data + ['status' => 'open', 'created_by' => $request->user()->id, 'updated_by' => $request->user()->id]);
             AuditLog::create(['user_id' => $request->user()->id, 'action' => 'create', 'entity_type' => ActionItem::class, 'entity_id' => $action->id, 'changes' => $data, 'ip_address' => $request->ip()]);
+
             return $action;
         });
 

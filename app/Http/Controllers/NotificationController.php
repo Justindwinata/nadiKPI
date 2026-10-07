@@ -29,7 +29,10 @@ class NotificationController extends Controller
     public function read(Request $request, UserNotification $notification): JsonResponse
     {
         $this->authorizeOwner($request, $notification);
-        if (! $notification->read_at) $notification->update(['read_at' => now()]);
+        if (! $notification->read_at) {
+            $notification->update(['read_at' => now()]);
+        }
+
         return response()->json(['notification' => $notification->fresh()]);
     }
 
@@ -63,6 +66,7 @@ class NotificationController extends Controller
     {
         $now = now();
         $count = UserNotification::query()->where('user_id', $request->user()->id)->whereNull('read_at')->update(['read_at' => $now, 'updated_at' => $now]);
+
         return response()->json(['updated' => $count]);
     }
 
@@ -73,9 +77,10 @@ class NotificationController extends Controller
 
         return response()->stream(function () use ($userId, $cursor): void {
             $lastId = $cursor;
-            $deadline = microtime(true) + max(5, min(60, (int) config('nadi.monitoring.sse_stream_seconds', 20))); 
+            $deadline = microtime(true) + max(5, min(60, (int) config('nadi.monitoring.sse_stream_seconds', 20)));
             echo "retry: 5000\n\n";
-            @ob_flush(); @flush();
+            @ob_flush();
+            @flush();
 
             while (microtime(true) < $deadline && ! connection_aborted()) {
                 $items = UserNotification::query()->where('user_id', $userId)->where('id', '>', $lastId)->orderBy('id')->limit(20)->get();
@@ -86,7 +91,8 @@ class NotificationController extends Controller
                     echo 'data: '.json_encode($item->toArray(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)."\n\n";
                 }
                 echo "event: heartbeat\ndata: {\"cursor\":{$lastId}}\n\n";
-                @ob_flush(); @flush();
+                @ob_flush();
+                @flush();
                 usleep(2_000_000);
             }
         }, 200, [

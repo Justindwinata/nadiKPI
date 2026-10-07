@@ -10,8 +10,8 @@ use App\Models\User;
 use App\Models\UserPermission;
 use App\Services\RiskSignalService;
 use Database\Seeders\PrototypeSeeder;
-use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class DecisionWorkflowTest extends TestCase
@@ -100,7 +100,6 @@ class DecisionWorkflowTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'escalate_risk_signal', 'entity_id' => $signal->id]);
         $this->assertDatabaseHas('audit_logs', ['action' => 'create_decision_action', 'entity_id' => $actionId]);
     }
-
 
     public function test_closed_signal_rejects_new_action_and_second_resolution(): void
     {
