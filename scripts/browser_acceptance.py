@@ -102,6 +102,7 @@ def create_viewer_through_ui(page) -> None:
     dialog = page.get_by_role("dialog", name="Tambah pengguna")
     dialog.get_by_label("Nama").fill("NADI Browser Viewer")
     dialog.get_by_label("Email").fill(VIEWER_EMAIL)
+    dialog.get_by_label("Divisi").select_option(index=0)
     dialog.get_by_label("Role").select_option("viewer")
     dialog.get_by_label("Jabatan").fill("Acceptance Viewer")
     dialog.get_by_label("Password sementara").fill(VIEWER_PASSWORD)
