@@ -185,7 +185,15 @@ def create_viewer_through_ui(page) -> None:
     dialog.get_by_label("Jabatan").fill("Acceptance Viewer")
     dialog.get_by_label("Password sementara").fill(VIEWER_PASSWORD)
     dialog.get_by_label("Konfirmasi").fill(VIEWER_PASSWORD)
-    dialog.get_by_role("button", name="Buat pengguna").click()
+    with page.expect_response(
+        lambda response: response.request.method == "POST"
+        and response.url.rstrip("/").endswith("/api/admin/users"),
+        timeout=15_000,
+    ) as create_response_info:
+        dialog.get_by_role("button", name="Buat pengguna").click()
+    create_response = create_response_info.value
+    if create_response.status != 201:
+        raise AssertionError(f"Viewer creation returned HTTP {create_response.status}: {create_response.text()[:240]}")
     page.get_by_text(VIEWER_EMAIL, exact=True).wait_for(timeout=10_000)
 
 
