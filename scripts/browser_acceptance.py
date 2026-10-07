@@ -520,6 +520,19 @@ def main() -> int:
             forced_page.get_by_label("Kata sandi saat ini").fill(FORCED_PASSWORD)
             forced_page.get_by_label("Kata sandi baru").fill(FORCED_NEW_PASSWORD)
             forced_page.get_by_label("Konfirmasi kata sandi").fill(FORCED_NEW_PASSWORD)
+            csrf_token = forced_page.evaluate(
+                """
+                () => {
+                    const cookie = document.cookie
+                        .split("; ")
+                        .find((item) => item.startsWith("XSRF-TOKEN="));
+                    return cookie ? decodeURIComponent(cookie.split("=").slice(1).join("=")) : "";
+                }
+                """
+            )
+            if not csrf_token:
+                raise AssertionError("Forced password update is missing the XSRF-TOKEN cookie")
+            forced_page.set_extra_http_headers({"X-XSRF-TOKEN": csrf_token})
             with forced_page.expect_response(
                 lambda response: response.url.endswith("/api/account/password"),
                 timeout=15_000,
