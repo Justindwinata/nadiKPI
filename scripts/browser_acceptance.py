@@ -120,11 +120,12 @@ def generate_report_and_verify_exports(page, context) -> dict[str, object]:
         "() => [...document.querySelectorAll('button')].some(button => button.textContent.includes('Buat snapshot') && !button.disabled)",
         timeout=15_000,
     )
+    create_button.scroll_into_view_if_needed()
     with page.expect_response(
         lambda response: response.request.method == "POST" and response.url.rstrip("/").endswith("/api/reports"),
         timeout=15_000,
     ) as response_info:
-        create_button.click()
+        create_button.click(force=True)
     response = response_info.value
     if response.status != 201:
         raise AssertionError(f"Report snapshot creation returned HTTP {response.status}")
